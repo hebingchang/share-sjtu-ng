@@ -4,6 +4,7 @@ import App from './App.tsx'
 import './index.css'
 import { BrowserRouter } from 'react-router-dom';
 import i18n from "i18next";
+import { SWRConfig } from 'swr'
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from 'i18next-browser-languagedetector';
 import en from "./i18n/en.ts";
@@ -29,7 +30,13 @@ i18n
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <App/>
+      <SWRConfig
+        value={{
+          fetcher: (resource, init) => fetch(resource, init).then(res => res.json())
+        }}
+      >
+        <App/>
+      </SWRConfig>
     </BrowserRouter>
   </React.StrictMode>,
 )
