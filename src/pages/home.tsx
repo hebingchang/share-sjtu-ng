@@ -5,56 +5,25 @@ import {
   Tabs,
   Tab,
   Chip,
-  AvatarGroup, Tooltip, Avatar, Skeleton
+  AvatarGroup, Tooltip, Avatar
 } from "@nextui-org/react";
 import { Icon } from "@iconify/react";
-import { useParams, useSearchParams } from "react-router-dom";
-import useSWR from "swr";
-import { Response } from "../types/rpc.ts";
-import { Course } from "../types/course.ts";
-import { useTranslation } from "react-i18next";
 
-export default function CoursePage() {
-  const {t} = useTranslation();
-  const {id} = useParams();
-  const {
-    data: course,
-    isLoading: isCourseLoading,
-    error: courseError
-  } = useSWR<Response<Course>>(`/api/v1/course/get/${id}`)
-
+export default function HomePage() {
   return (
     <div className="w-full max-w-[1024px] px-4 lg:px-8">
       <header className="mb-6 flex w-full items-center justify-between">
         <div className="flex flex-col">
-          {
-            isCourseLoading ?
-              <Skeleton className="rounded-lg">
-                <div className="h-9 rounded-lg bg-default-300"></div>
-              </Skeleton>
-              :
-              <h1 className="text-xl font-bold text-default-900 lg:text-3xl">
-                {course?.data.name}
-              </h1>
-          }
-          {
-            isCourseLoading ?
-              <Skeleton className="rounded-lg">
-                <div className="h-6 rounded-lg bg-default-300"></div>
-              </Skeleton>
-              :
-              <p className="text-small text-default-400 lg:text-medium">
-                {course?.data.english_name}
-              </p>
-          }
+          <h1 className="text-xl font-bold text-default-900 lg:text-3xl">Dashboard</h1>
+          <p className="text-small text-default-400 lg:text-medium">Manage your deployments</p>
         </div>
         <Button
-          className="bg-foreground text-background hidden lg:flex"
+          className="bg-foreground text-background"
           startContent={
             <Icon className="flex-none text-background/60" icon="lucide:plus" width={16}/>
           }
         >
-          {t('course.add_material')}
+          New Deployment
         </Button>
       </header>
       <ScrollShadow

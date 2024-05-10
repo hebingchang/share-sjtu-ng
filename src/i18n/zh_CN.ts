@@ -9,5 +9,12 @@ export default {
     "login.other_login_options": "其他登录方式",
     "login.jaccount": "使用 jAccount 登录",
     "login.passkey": "使用 Passkey 登录",
+
+    "brand": "传承・交大",
+
+    "menu.welcome": "欢迎，",
+    "menu.points": "剩余积分",
+
+    "course.add_material": "上传资料",
   }
 }

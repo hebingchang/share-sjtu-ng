@@ -4,27 +4,41 @@ import {
   Navbar,
   NavbarBrand,
   NavbarMenuToggle,
-  Breadcrumbs,
-  BreadcrumbItem,
   NavbarContent,
   NavbarItem,
   Dropdown,
   DropdownTrigger,
-  Badge,
   Avatar,
-  DropdownMenu, DropdownItem, NavbarMenu, NavbarMenuItem, Link, Modal, ModalContent, ModalBody
+  DropdownMenu, DropdownItem, NavbarMenu, NavbarMenuItem, Link, Modal, ModalContent, ModalBody, DropdownSection
 } from "@nextui-org/react";
 import { Icon } from "@iconify/react";
 import { useTranslation } from "react-i18next";
 import LoginModal from "./login.tsx";
-import { tokenAtom } from "../atoms/authenticate.ts";
+import { profileAtom, tokenAtom } from "../atoms/authenticate.ts";
 import { useAtom } from 'jotai'
 import { Outlet } from 'react-router-dom';
 import { DarkMode } from 'use-dark-mode';
+import { useEffect } from "react";
+import { constants } from "../env.ts";
+import { SWRConfig } from "swr";
 
 export default function Layout({darkMode}: { darkMode: DarkMode }) {
   const {t} = useTranslation();
   const [token] = useAtom(tokenAtom)
+  const [profile, setProfile] = useAtom(profileAtom)
+
+  useEffect(() => {
+    if (token !== null) {
+      fetch(`${constants.API_URL}/api/v1/user/profile`, {
+        method: 'GET',
+        headers: {
+          'Auth': token
+        }
+      }).then(res => res.json()).then(res => {
+        setProfile(res.data)
+      })
+    }
+  }, [setProfile, token])
 
   return (
     <div className="w-full">
@@ -78,22 +92,25 @@ export default function Layout({darkMode}: { darkMode: DarkMode }) {
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <button className="mt-1 h-8 w-8 transition-transform">
-                  <Badge color="success" content="" placement="bottom-right" shape="circle">
-                    <Avatar size="sm" src="https://i.pravatar.cc/150?u=a04258114e29526708c"/>
-                  </Badge>
+                  <Avatar size="sm" name={profile?.account}/>
                 </button>
               </DropdownTrigger>
               <DropdownMenu aria-label="Profile Actions" variant="flat">
-                <DropdownItem key="profile" className="h-14 gap-2">
-                  <p className="font-semibold">Signed in as</p>
-                  <p className="font-semibold">johndoe@example.com</p>
-                </DropdownItem>
+                <DropdownSection showDivider>
+                  <DropdownItem key="profile" className="h-14 gap-2">
+                    <p><span className="font-semibold">{t('menu.welcome')}</span>{profile?.name}</p>
+                    <p className='text-default-400'>{profile?.code}</p>
+                  </DropdownItem>
+                </DropdownSection>
+                <DropdownSection showDivider>
+                  <DropdownItem
+                    key="points"
+                    endContent={<p className="font-semibold">{profile?.points.points}</p>}
+                  >
+                    {t('menu.points')}
+                  </DropdownItem>
+                </DropdownSection>
                 <DropdownItem key="settings">My Settings</DropdownItem>
-                <DropdownItem key="team_settings">Team Settings</DropdownItem>
-                <DropdownItem key="analytics">Analytics</DropdownItem>
-                <DropdownItem key="system">System</DropdownItem>
-                <DropdownItem key="configurations">Configurations</DropdownItem>
-                <DropdownItem key="help_and_feedback">Help & Feedback</DropdownItem>
                 <DropdownItem key="logout" color="danger">
                   Log Out
                 </DropdownItem>
@@ -136,7 +153,16 @@ export default function Layout({darkMode}: { darkMode: DarkMode }) {
           token === null ?
             <div>login</div>
             :
-            <Outlet/>
+            <SWRConfig
+              value={{
+                fetcher: (resource, init) => fetch(`${constants.API_URL}${resource}`, {
+                  ...init,
+                  headers: {'Auth': token}
+                }).then(res => res.json())
+              }}
+            >
+              <Outlet/>
+            </SWRConfig>
         }
 
         <Modal isOpen={!token} isDismissable={false} hideCloseButton size='sm' backdrop='blur'>
