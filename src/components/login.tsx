@@ -5,9 +5,10 @@ import { Icon } from "@iconify/react";
 import { useTranslation } from "react-i18next";
 import JAccountIcon from '../assets/jaccount.png';
 import { constants } from "../env.ts";
-import { Response, OAuthConfig } from "../types/rpc.ts";
+import { Response } from "../types/rpc.ts";
 import { tokenAtom } from "../atoms/authenticate.ts";
 import { useAtom } from 'jotai';
+import { OAuthConfig } from "../types/auth.ts";
 
 export default function LoginModal() {
   const [isFormVisible, setIsFormVisible] = React.useState(false);

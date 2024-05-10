@@ -8,11 +8,14 @@ import {
   AvatarGroup, Tooltip, Avatar, Skeleton
 } from "@nextui-org/react";
 import { Icon } from "@iconify/react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import useSWR from "swr";
 import { Response } from "../types/rpc.ts";
 import { Course } from "../types/course.ts";
 import { useTranslation } from "react-i18next";
+import CourseMaterials from "../components/course_materials.tsx";
+import React from "react";
+import CourseProfile from "../components/course_profile.tsx";
 
 export default function CoursePage() {
   const {t} = useTranslation();
@@ -22,6 +25,7 @@ export default function CoursePage() {
     isLoading: isCourseLoading,
     error: courseError
   } = useSWR<Response<Course>>(`/api/v1/course/get/${id}`)
+  const [tab, setTab] = React.useState("materials");
 
   return (
     <div className="w-full max-w-[1024px] px-4 lg:px-8">
@@ -69,20 +73,16 @@ export default function CoursePage() {
           }}
           radius="full"
           variant="light"
+          selectedKey={tab}
+          onSelectionChange={(k) => setTab(k.toString())}
         >
-          <Tab key="dashboard" title="Dashboard"/>
-          <Tab
-            key="deployments"
-            title={
-              <div className="flex items-center gap-2">
-                <p>Deployments</p>
-                <Chip size="sm">9</Chip>
-              </div>
-            }
-          />
-          <Tab key="analytics" title="Analytics"/>
-          <Tab key="team" title="Team"/>
-          <Tab key="settings" title="Settings"/>
+          <Tab key="materials" title={
+            <div className="flex items-center gap-2">
+              <p>{t('course.menu.materials')}</p>
+              <Chip size="sm">{course?.data.material_count}</Chip>
+            </div>
+          }/>
+          <Tab key="profile" title={t('course.menu.profile')}/>
         </Tabs>
         <div className="flex items-center gap-4">
           <AvatarGroup max={3} size="sm" total={10}>
@@ -104,6 +104,16 @@ export default function CoursePage() {
           </Tooltip>
         </div>
       </ScrollShadow>
+
+      <div className='w-full pt-4'>
+        {
+          tab === 'materials' && <CourseMaterials course={course?.data}/>
+        }
+
+        {
+          tab === 'profile' && <CourseProfile course={course?.data}/>
+        }
+      </div>
     </div>
   );
 }

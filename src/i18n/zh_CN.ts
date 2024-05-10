@@ -16,5 +16,8 @@ export default {
     "menu.points": "剩余积分",
 
     "course.add_material": "上传资料",
+    "course.menu.materials": "课程资料",
+    "course.menu.profile": "课程信息",
+    "course.profile.description": "课程简介",
   }
 }
