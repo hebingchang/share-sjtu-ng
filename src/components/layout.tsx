@@ -10,7 +10,7 @@ import {
   DropdownTrigger,
   Avatar,
   DropdownMenu, DropdownItem, NavbarMenu, NavbarMenuItem, Link, Modal, ModalContent, ModalBody, DropdownSection
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTranslation } from "react-i18next";
 import LoginModal from "./login.tsx";
@@ -22,8 +22,8 @@ import { useEffect } from "react";
 import { constants } from "../env.ts";
 import { SWRConfig } from "swr";
 
-export default function Layout({darkMode}: { darkMode: DarkMode }) {
-  const {t} = useTranslation();
+export default function Layout({ darkMode }: { darkMode: DarkMode }) {
+  const { t } = useTranslation();
   const [token] = useAtom(tokenAtom)
   const [profile, setProfile] = useAtom(profileAtom)
 
@@ -95,9 +95,13 @@ export default function Layout({darkMode}: { darkMode: DarkMode }) {
                   <Avatar size="sm" name={profile?.account}/>
                 </button>
               </DropdownTrigger>
-              <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownMenu
+                aria-label="Profile Actions"
+                variant="flat"
+                disabledKeys={["profile"]}
+              >
                 <DropdownSection showDivider>
-                  <DropdownItem key="profile" className="h-14 gap-2">
+                  <DropdownItem key="profile" className="h-14 gap-2 opacity-100" isReadOnly>
                     <p><span className="font-semibold">{t('menu.welcome')}</span>{profile?.name}</p>
                     <p className='text-default-400'>{profile?.code}</p>
                   </DropdownItem>
@@ -157,7 +161,7 @@ export default function Layout({darkMode}: { darkMode: DarkMode }) {
               value={{
                 fetcher: (resource, init) => fetch(`${constants.API_URL}${resource}`, {
                   ...init,
-                  headers: {'Auth': token}
+                  headers: { 'Auth': token }
                 }).then(res => res.json())
               }}
             >

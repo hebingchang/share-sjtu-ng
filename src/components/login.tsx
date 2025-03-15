@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Input, Divider, ResizablePanel, Image } from "@nextui-org/react";
+import { Button, Input, Divider, ResizablePanel, Image } from "@heroui/react";
 import { AnimatePresence, m, domAnimation, LazyMotion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import { useTranslation } from "react-i18next";

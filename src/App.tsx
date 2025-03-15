@@ -1,7 +1,7 @@
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import {
-  NextUIProvider,
-} from "@nextui-org/react";
+  HeroUIProvider,
+} from "@heroui/react";
 import './App.css'
 import CoursePage from "./pages/course.tsx";
 import useDarkMode from "use-dark-mode";
@@ -18,7 +18,7 @@ function App() {
   });
 
   return (
-    <NextUIProvider navigate={navigate} className={`${darkMode.value ? 'dark' : ''} text-foreground bg-background`}>
+    <HeroUIProvider navigate={navigate} className={`${darkMode.value ? 'dark' : ''} text-foreground bg-background`}>
       <Routes>
         <Route path="/" element={<Layout darkMode={darkMode}/>}>
           <Route path="/" element={<HomePage/>}/>
@@ -27,7 +27,7 @@ function App() {
 
         <Route path="/auth/:channel/callback" element={<OAuthCallbackPage/>}/>
       </Routes>
-    </NextUIProvider>
+    </HeroUIProvider>
   )
 }
 

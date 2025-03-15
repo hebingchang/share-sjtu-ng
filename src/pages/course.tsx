@@ -6,7 +6,7 @@ import {
   Tab,
   Chip,
   AvatarGroup, Tooltip, Avatar, Skeleton
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from "react-i18next";
 import { Course } from "../types/course.ts";
-import { Select, SelectItem } from "@nextui-org/react";
+import { Select, SelectItem } from "@heroui/react";
 
 export default function CourseMaterials({course}: { course?: Course }) {
   const {t} = useTranslation();

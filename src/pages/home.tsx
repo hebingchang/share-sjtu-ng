@@ -6,7 +6,7 @@ import {
   Tab,
   Chip,
   AvatarGroup, Tooltip, Avatar
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 export default function HomePage() {
