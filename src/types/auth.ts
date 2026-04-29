@@ -7,4 +7,5 @@ export interface OAuthConfig {
   endpoint: OAuthEndpoint
   redirect_uri?: string
   scopes: string[]
+  state?: string
 }

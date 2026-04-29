@@ -273,7 +273,7 @@ function getSyncStatusView(
   }
   if (phase === 'running') {
     return {
-      description: '正在读取教务课程并匹配站内课程，完成后列表会自动刷新。',
+      description: '正在同步教务课程并匹配站内课程，完成后列表会自动刷新。',
       label: '同步中',
       title: '正在同步课程',
       tone: 'accent',
@@ -412,7 +412,7 @@ function RecentPurchasesCard({
               className="flex items-center gap-2 rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
             >
               <Spinner size="sm" />
-              正在读取购买记录
+              正在加载购买记录
             </motion.div>
           ) : error ? (
             <motion.div
@@ -1040,7 +1040,7 @@ export default function HomePage() {
                     className="flex items-center gap-2 rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
                   >
                     <Spinner size="sm" />
-                    正在读取课程
+                    正在加载课程
                   </motion.div>
                 ) : courseError ? (
                   <motion.div
@@ -1124,7 +1124,7 @@ export default function HomePage() {
                           className="flex items-center gap-2 rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
                         >
                           <Spinner size="sm" />
-                          正在读取该学期课程
+                          正在加载该学期课程
                         </motion.div>
                       ) : courses.length === 0 ? (
                         <motion.div

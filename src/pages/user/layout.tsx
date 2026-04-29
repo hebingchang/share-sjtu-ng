@@ -90,7 +90,7 @@ function UserNav() {
             <Sidebar.MenuIcon>
               <FilePlus />
             </Sidebar.MenuIcon>
-            <Sidebar.MenuLabel>上传的资料</Sidebar.MenuLabel>
+            <Sidebar.MenuLabel>我上传的资料</Sidebar.MenuLabel>
           </Sidebar.MenuItem>
           <Sidebar.MenuItem
             href="/user/materials/purchase"
@@ -143,12 +143,12 @@ function UserNav() {
             href="/user/points/gift"
             id="points-gift"
             isCurrent={location.pathname === '/user/points/gift'}
-            textValue="积分赠送"
+            textValue="积分转账"
           >
             <Sidebar.MenuIcon>
               <PersonPlus />
             </Sidebar.MenuIcon>
-            <Sidebar.MenuLabel>积分赠送</Sidebar.MenuLabel>
+            <Sidebar.MenuLabel>积分转账</Sidebar.MenuLabel>
           </Sidebar.MenuItem>
         </Sidebar.Submenu>
       </Sidebar.MenuItem>

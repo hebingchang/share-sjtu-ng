@@ -23,5 +23,5 @@ export const USER_PAGE_TITLES: Record<string, string> = {
   '/user/materials/purchase': '我购买的资料',
   '/user/points/logs': '积分变动日志',
   '/user/points/redeem': '积分兑换',
-  '/user/points/gift': '积分赠送',
+  '/user/points/gift': '积分转账',
 }

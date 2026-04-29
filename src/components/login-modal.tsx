@@ -19,7 +19,6 @@ import {
   buildLoginOAuthUrl,
   clearLoginOAuthCallback,
   clearLoginOAuthFlow,
-  createLoginOAuthState,
   getLoginReturnTo,
   readLoginOAuthCallback,
   readLoginOAuthFlow,
@@ -43,12 +42,13 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
   }, [])
 
   const completeJaccountLogin = useCallback(
-    async (code: string) => {
+    async (code: string, state: string) => {
       setAuthorizing('jaccount')
 
       try {
         const response = await fetch(
-          `${constants.API_URL}/auth/jaccount/authorize?` + new URLSearchParams({ code }),
+          `${constants.API_URL}/auth/jaccount/authorize?` +
+            new URLSearchParams({ code, state }),
           { method: 'GET', credentials: 'include' },
         )
         const payload = (await response.json()) as Response<string>
@@ -92,18 +92,19 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
     }
 
     const code = callback.code
+    const state = callback.state
     if (!code) {
       showStoredCallbackError('jAccount 没有返回授权码，请稍后再试。')
       return
     }
 
-    if (!callback.state || callback.state !== flow.state) {
+    if (!state || state !== flow.state) {
       showStoredCallbackError('登录状态已失效，请重新登录。')
       return
     }
 
     window.setTimeout(() => {
-      void completeJaccountLogin(code)
+      void completeJaccountLogin(code, state)
     }, 0)
   }, [completeJaccountLogin, isOpen, showAuthError])
 
@@ -132,7 +133,13 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
         }
 
         const redirectUri = config.redirect_uri ?? requestedRedirectUri
-        const state = createLoginOAuthState()
+        if (!config.state) {
+          showAuthError('jAccount 登录配置没有返回状态码，请稍后再试。')
+          setAuthorizing(null)
+          return
+        }
+
+        const state = config.state
         const returnTo = getLoginReturnTo()
         const authUrl = buildLoginOAuthUrl({
           authUrl: config.endpoint.auth_url,
@@ -210,7 +217,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
 
           fetch(
             `${constants.API_URL}/auth/jaccount/authorize?` +
-              new URLSearchParams({ code: ev.data.code }),
+              new URLSearchParams({ code: ev.data.code, state }),
             { method: 'GET', credentials: 'include' },
           )
             .then((r) => r.json() as Promise<Response<string>>)

@@ -143,7 +143,7 @@ export function UploadedMaterialsView() {
   }, [page, reloadKey, token])
 
   if (isLoading && materials.length === 0) {
-    return <LoadingState label={`正在读取${UPLOADED_MATERIALS_TITLE}`} />
+    return <LoadingState label={`正在加载${UPLOADED_MATERIALS_TITLE}`} />
   }
 
   if (error) {

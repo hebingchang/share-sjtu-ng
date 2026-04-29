@@ -157,7 +157,7 @@ export function BasicInfoView() {
   }, [profile, showDialog])
 
   if (isProfileLoading && !profile) {
-    return <LoadingState label="正在读取基本信息" />
+    return <LoadingState label="正在加载基本信息" />
   }
 
   if (!profile) {

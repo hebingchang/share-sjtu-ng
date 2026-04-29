@@ -93,7 +93,7 @@ function PointLogsLoadingBadge() {
   return (
     <div className="flex items-center gap-2 rounded-full border border-border/70 bg-surface/95 px-3 py-2 text-sm text-muted shadow-surface">
       <Spinner size="sm" />
-      <span>正在读取积分日志</span>
+      <span>正在加载积分日志</span>
     </div>
   )
 }

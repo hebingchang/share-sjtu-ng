@@ -145,7 +145,7 @@ export function PurchasedMaterialsView() {
   }, [page, reloadKey, token])
 
   if (isLoading && purchases.length === 0) {
-    return <LoadingState label={`正在读取${PURCHASED_MATERIALS_TITLE}`} />
+    return <LoadingState label={`正在加载${PURCHASED_MATERIALS_TITLE}`} />
   }
 
   if (error) {
