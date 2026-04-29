@@ -86,7 +86,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <DialogProvider>
-      <div className="flex min-h-dvh flex-col">
+      <div className="flex min-h-svh flex-col">
         <header className="sticky top-0 z-40 flex w-full justify-center px-6 py-4 max-md:px-4">
           <div
             className={`flex w-full items-center justify-between gap-4 transition-all duration-300 ease-out ${

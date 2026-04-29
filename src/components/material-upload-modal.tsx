@@ -843,7 +843,7 @@ export default function MaterialUploadModal({
       >
         <Modal.Dialog
           aria-label="上传资料"
-          className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl bg-background p-0 shadow-[0_24px_80px_rgb(0_0_0/0.2)] dark:border dark:border-white/10 dark:shadow-[0_28px_90px_rgb(0_0_0/0.72),0_0_0_1px_rgb(255_255_255/0.04)] sm:max-w-240"
+          className="flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-3xl bg-background p-0 shadow-[0_24px_80px_rgb(0_0_0/0.2)] dark:border dark:border-white/10 dark:shadow-[0_28px_90px_rgb(0_0_0/0.72),0_0_0_1px_rgb(255_255_255/0.04)] sm:max-w-240"
         >
           <Modal.CloseTrigger className="right-4 top-4 sm:right-6 sm:top-6"/>
           <Modal.Header className="border-b border-separator bg-surface/60 px-5 py-5 sm:px-7">
