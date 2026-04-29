@@ -247,10 +247,10 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
   return (
     <>
       <Modal.Backdrop isOpen={isOpen} isDismissable={false} isKeyboardDismissDisabled variant="blur">
-        <Modal.Container placement="center" size="sm">
-          <Modal.Dialog className="sm:max-w-105">
-            <div className="flex flex-col">
-              <div className="flex flex-col pt-4 pb-2 px-2 lg:p-6">
+        <Modal.Container placement="center" scroll="inside" size="sm">
+          <Modal.Dialog className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-105">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col px-2 pt-4 pb-2 lg:p-6">
                 <Modal.Header className="items-center p-0 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <Modal.Heading className="flex items-baseline justify-center gap-1 text-2xl font-semibold leading-none">
@@ -262,7 +262,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                   </div>
                 </Modal.Header>
 
-                <Modal.Body className="mt-7 flex flex-col gap-4 overflow-visible p-0">
+                <Modal.Body className="mt-7 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-0 pr-1 [scrollbar-width:thin] [&>*]:shrink-0">
                   <Form
                     aria-label="邮箱登录"
                     className="flex min-w-0 flex-col gap-3"
@@ -345,7 +345,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
 
                 </Modal.Body>
 
-                <p className="mt-6 text-center text-xs leading-5 text-muted">
+                <p className="mt-6 shrink-0 text-center text-xs leading-5 text-muted">
                   继续登录代表您同意传承·交大的服务条款和隐私政策
                 </p>
               </div>

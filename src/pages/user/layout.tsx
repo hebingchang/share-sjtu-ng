@@ -163,7 +163,10 @@ function UserPageHeader() {
 
   return (
     <div className="flex items-start gap-3">
-      <Sidebar.Trigger aria-label="打开用户中心导航" className="mt-0.5 shrink-0 lg:hidden" />
+      <Sidebar.Trigger
+        aria-label="打开用户中心导航"
+        className="mt-0.5 shrink-0 min-[769px]:hidden"
+      />
       <div className="flex min-w-0 flex-col gap-2">
         <p className="text-sm font-medium text-accent">用户中心</p>
         <AnimatePresence initial={false} mode="wait">
@@ -218,7 +221,7 @@ export function UserCenterLayout() {
       toggleShortcut={false}
       variant="floating"
     >
-      <Sidebar className="hidden !h-auto !min-h-0 lg:sticky lg:top-28 lg:flex">
+      <Sidebar className="!top-28 !h-auto !min-h-0">
         <Sidebar.Header>
           <div className="flex flex-col gap-1 px-1">
             <p className="text-sm font-semibold text-foreground">用户中心</p>

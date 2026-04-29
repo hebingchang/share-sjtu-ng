@@ -513,6 +513,7 @@ export default function HomePage() {
   const [keyword, setKeyword] = useState('')
   const [terms, setTerms] = useState<UserCourseTerm[]>([])
   const [selectedTermKey, setSelectedTermKey] = useState<string | null>(null)
+  const [displayedCourseTermKey, setDisplayedCourseTermKey] = useState<string | null>(null)
   const [courses, setCourses] = useState<UserCourse[]>([])
   const [isTermsLoading, setTermsLoading] = useState(true)
   const [isCoursesLoading, setCoursesLoading] = useState(false)
@@ -546,6 +547,7 @@ export default function HomePage() {
       })
       if (nextTerms.length === 0) {
         setCourses([])
+        setDisplayedCourseTermKey(null)
       }
       setCoursePage(1)
     } catch (err) {
@@ -632,6 +634,7 @@ export default function HomePage() {
 
     const selected = parseTermKey(selectedTermKey)
     if (!selected) return
+    const requestedTermKey = selectedTermKey
 
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
@@ -646,10 +649,14 @@ export default function HomePage() {
       })
         .then((nextCourses) => {
           setCourses(nextCourses)
+          setDisplayedCourseTermKey(requestedTermKey)
+          setCoursePage(1)
         })
         .catch((err) => {
           if (isAbortError(err)) return
           setCourses([])
+          setDisplayedCourseTermKey(requestedTermKey)
+          setCoursePage(1)
           setCourseError(err instanceof Error ? err.message : '获取我的课程失败')
         })
         .finally(() => {
@@ -893,6 +900,8 @@ export default function HomePage() {
   const coursePageEnd = Math.min(coursePageStart + COURSES_PAGE_SIZE, courses.length)
   const visibleCourses = courses.slice(coursePageStart, coursePageEnd)
   const coursePageNumbers = getPageNumbers(safeCoursePage, totalCoursePages)
+  const shouldShowCoursesLoading = Boolean(selectedTermKey) && !displayedCourseTermKey
+  const shouldShowCoursesLoadingHint = isCoursesLoading && !!displayedCourseTermKey
 
   return (
     <div className="flex flex-col gap-10">
@@ -1070,6 +1079,7 @@ export default function HomePage() {
                   <motion.div
                     key="terms-content"
                     {...stateMotion}
+                    aria-busy={isCoursesLoading}
                     className="flex flex-col gap-3"
                   >
                     <motion.div
@@ -1089,7 +1099,6 @@ export default function HomePage() {
                             key={key}
                             aria-selected={isSelected}
                             variants={tabItemVariants}
-                            whileHover={{ y: -1 }}
                             whileTap={{ scale: 0.96 }}
                             className="flex h-8 shrink-0 cursor-(--cursor-interactive) items-center gap-1.5 rounded-full border border-default px-3 text-xs font-medium text-muted transition-colors hover:text-foreground data-[selected=true]:border-accent/30 data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent"
                             data-selected={isSelected}
@@ -1097,7 +1106,6 @@ export default function HomePage() {
                             type="button"
                             onClick={() => {
                               setSelectedTermKey(key)
-                              setCoursePage(1)
                             }}
                           >
                             <Calendar className="size-3.5" />
@@ -1107,80 +1115,100 @@ export default function HomePage() {
                       })}
                     </motion.div>
 
-                    <AnimatePresence initial={false} mode="wait">
-                      {isCoursesLoading ? (
-                        <motion.div
-                          key="courses-loading"
-                          {...stateMotion}
-                          className="flex items-center gap-2 rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
-                        >
-                          <Spinner size="sm" />
-                          正在加载该学期课程
-                        </motion.div>
-                      ) : courses.length === 0 ? (
-                        <motion.div
-                          key="courses-empty"
-                          {...stateMotion}
-                          className="rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
-                        >
-                          这个学期暂时没有课程。
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key={`courses-${selectedTermKey}-${safeCoursePage}`}
-                          animate="visible"
-                          className="flex flex-col gap-1.5"
-                          exit="exit"
-                          initial="hidden"
-                          variants={listContainerVariants}
-                        >
-                          {visibleCourses.map((record) => (
-                            <motion.button
-                              key={record.id}
-                              layout="position"
-                              variants={listItemVariants}
-                              whileHover={{ x: 2 }}
-                              whileTap={{ scale: 0.985 }}
-                              className="group flex w-full cursor-(--cursor-interactive) items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-secondary"
-                              type="button"
-                              onClick={() => navigate(getCourseLink(record))}
-                            >
-                              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                <div className="flex min-w-0 items-center gap-1.5">
-                                  {record.course.code ? (
-                                    <Chip className="shrink-0" size="sm" variant="soft">
-                                      <Chip.Label className="tabular-nums">
-                                        {record.course.code}
-                                      </Chip.Label>
-                                    </Chip>
-                                  ) : null}
-                                  <span className="truncate text-sm font-medium text-foreground">
-                                    {record.course.name}
-                                  </span>
-                                </div>
-                                <div className="flex min-w-0 items-center gap-2 text-xs text-muted">
-                                  {record.class?.teacher?.name ? (
-                                    <span className="flex min-w-0 items-center gap-1">
-                                      <Person className="size-3.5 shrink-0" />
-                                      <span className="truncate">{record.class.teacher.name}</span>
+                    <div className="relative">
+                      <AnimatePresence initial={false}>
+                        {shouldShowCoursesLoadingHint ? (
+                          <motion.div
+                            key="courses-loading-hint"
+                            {...stateMotion}
+                            aria-live="polite"
+                            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+                          >
+                            <span className="flex items-center gap-2 rounded-full border border-default bg-surface/95 px-3 py-2 text-xs text-muted shadow-sm backdrop-blur">
+                              <Spinner size="sm" />
+                              正在加载该学期课程
+                            </span>
+                          </motion.div>
+                        ) : null}
+                      </AnimatePresence>
+
+                      <AnimatePresence initial={false} mode="wait">
+                        {shouldShowCoursesLoading ? (
+                          <motion.div
+                            key="courses-loading"
+                            {...stateMotion}
+                            className="flex items-center gap-2 rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
+                          >
+                            <Spinner size="sm" />
+                            正在加载该学期课程
+                          </motion.div>
+                        ) : courses.length === 0 ? (
+                          <motion.div
+                            key="courses-empty"
+                            {...stateMotion}
+                            className="rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
+                          >
+                            这个学期暂时没有课程。
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key={`courses-${displayedCourseTermKey}-${safeCoursePage}`}
+                            animate="visible"
+                            className="flex flex-col gap-1.5"
+                            exit="exit"
+                            initial="hidden"
+                            variants={listContainerVariants}
+                          >
+                            {visibleCourses.map((record) => (
+                              <motion.button
+                                key={record.id}
+                                layout="position"
+                                variants={listItemVariants}
+                                whileHover={{ x: 2 }}
+                                whileTap={{ scale: 0.985 }}
+                                className="group flex w-full cursor-(--cursor-interactive) items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-secondary"
+                                type="button"
+                                onClick={() => navigate(getCourseLink(record))}
+                              >
+                                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                  <div className="flex min-w-0 items-center gap-1.5">
+                                    {record.course.code ? (
+                                      <Chip className="shrink-0" size="sm" variant="soft">
+                                        <Chip.Label className="tabular-nums">
+                                          {record.course.code}
+                                        </Chip.Label>
+                                      </Chip>
+                                    ) : null}
+                                    <span className="truncate text-sm font-medium text-foreground">
+                                      {record.course.name}
                                     </span>
-                                  ) : null}
-                                  {record.course.organization?.name ? (
-                                    <span className="flex min-w-0 items-center gap-1">
-                                      <Books className="size-3.5 shrink-0" />
-                                      <span className="truncate">
-                                        {record.course.organization.name}
+                                  </div>
+                                  <div className="flex min-w-0 items-center gap-2 text-xs text-muted">
+                                    {record.class?.teacher?.name ? (
+                                      <span className="flex min-w-0 items-center gap-1">
+                                        <Person className="size-3.5 shrink-0" />
+                                        <span className="truncate">
+                                          {record.class.teacher.name}
+                                        </span>
                                       </span>
-                                    </span>
-                                  ) : null}
+                                    ) : null}
+                                    {record.course.organization?.name ? (
+                                      <span className="flex min-w-0 items-center gap-1">
+                                        <Books className="size-3.5 shrink-0" />
+                                        <span className="truncate">
+                                          {record.course.organization.name}
+                                        </span>
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 </div>
-                              </div>
-                              <ChevronRight className="size-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-                            </motion.button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                                <ChevronRight className="size-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
                     {courses.length > COURSES_PAGE_SIZE ? (
                       <Pagination className="mt-1 w-full flex-wrap gap-2" size="sm">

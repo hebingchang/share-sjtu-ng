@@ -288,11 +288,11 @@ export default function CoursePage() {
   const showOldCode = !!replacementCode && course?.code && course.code !== replacementCode
   const taxonomy = useMemo(() => {
     if (!course) return [] as string[]
-    return [
+    return [...new Set([
       course.course_type?.name,
       course.course_category?.name,
       course.course_nature?.name,
-    ].filter(Boolean) as string[]
+    ])].filter(Boolean) as string[]
   }, [course])
 
   return (

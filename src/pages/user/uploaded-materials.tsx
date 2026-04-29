@@ -1,9 +1,19 @@
-import { Clock, FilePlus, FileText, ShoppingCart } from '@gravity-ui/icons'
-import { Card } from '@heroui/react'
+import {
+  Clock,
+  FilePlus,
+  FileText,
+  PencilToSquare,
+  ShoppingCart,
+  TrashBin,
+} from '@gravity-ui/icons'
+import { AlertDialog, Button, Card } from '@heroui/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { deleteMaterial } from '../../api/materials'
 import { getUserUploadMaterials } from '../../api/user'
 import { useAuth } from '../../auth/use-auth'
+import MaterialUploadModal from '../../components/material-upload-modal'
+import { useDialog } from '../../dialog/use-dialog'
 import type { Material } from '../../types/material'
 import { USER_CENTER_PAGE_SIZE } from './constants'
 import {
@@ -33,7 +43,15 @@ function getUploadedMaterialSubtitle(material: Material): string {
   return [courseName, teacherName].filter(Boolean).join(' · ') || '课程信息暂缺'
 }
 
-function UploadedMaterialItem({ material }: { material: Material }) {
+function UploadedMaterialItem({
+  material,
+  onDelete,
+  onEdit,
+}: {
+  material: Material
+  onDelete: () => void
+  onEdit: () => void
+}) {
   const link = getMaterialLink(material)
   const size = formatFileSize(material.size)
   const title = getUploadedMaterialTitle(material)
@@ -64,6 +82,28 @@ function UploadedMaterialItem({ material }: { material: Material }) {
               {getUploadedMaterialSubtitle(material)}
             </p>
           </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              isIconOnly
+              aria-label={`编辑 ${title}`}
+              className="size-8"
+              size="sm"
+              variant="ghost"
+              onPress={onEdit}
+            >
+              <PencilToSquare className="size-4" />
+            </Button>
+            <Button
+              isIconOnly
+              aria-label={`删除 ${title}`}
+              className="size-8 text-danger hover:text-danger"
+              size="sm"
+              variant="ghost"
+              onPress={onDelete}
+            >
+              <TrashBin className="size-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4">
@@ -83,6 +123,79 @@ function UploadedMaterialItem({ material }: { material: Material }) {
   )
 }
 
+function DeleteUploadedMaterialDialog({
+  isOpen,
+  material,
+  onDeleted,
+  onOpenChange,
+}: {
+  isOpen: boolean
+  material: Material
+  onDeleted: (material: Material) => void
+  onOpenChange: (open: boolean) => void
+}) {
+  const { token } = useAuth()
+  const { showDialog } = useDialog()
+  const [isDeleting, setDeleting] = useState(false)
+  const title = getUploadedMaterialTitle(material)
+
+  async function handleDelete() {
+    if (!token) return
+
+    setDeleting(true)
+    try {
+      await deleteMaterial({ id: material.id, token })
+      onDeleted(material)
+      onOpenChange(false)
+      showDialog({
+        status: 'success',
+        title: '资料已删除',
+        description: `「${title}」已从你的上传资料中移除。`,
+      })
+    } catch (err) {
+      showDialog({
+        status: 'danger',
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '请稍后再试',
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <AlertDialog.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialog.Container placement="center">
+        <AlertDialog.Dialog className="sm:max-w-md">
+          <AlertDialog.Header>
+            <AlertDialog.Icon status="danger">
+              <TrashBin className="size-5" />
+            </AlertDialog.Icon>
+            <AlertDialog.Heading>删除资料</AlertDialog.Heading>
+          </AlertDialog.Header>
+          <AlertDialog.Body>
+            <p className="text-sm leading-6 text-muted">
+              删除后无法恢复，其他用户也将无法购买或下载这份资料。
+            </p>
+            <p className="mt-3 truncate rounded-lg bg-surface-secondary px-3 py-2 text-sm font-medium text-foreground">
+              {title}
+            </p>
+          </AlertDialog.Body>
+          <AlertDialog.Footer>
+            <Button slot="close" variant="tertiary">
+              取消
+            </Button>
+            <Button isPending={isDeleting} variant="danger" onPress={handleDelete}>
+              <TrashBin className="size-4" />
+              删除
+            </Button>
+          </AlertDialog.Footer>
+        </AlertDialog.Dialog>
+      </AlertDialog.Container>
+    </AlertDialog.Backdrop>
+  )
+}
+
 export function UploadedMaterialsView() {
   const { isInitializing, token } = useAuth()
   const [page, setPage] = useState(1)
@@ -92,6 +205,8 @@ export function UploadedMaterialsView() {
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
+  const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(null)
 
   const totalPages = getTotalPages(total)
   const isPageLoading = isLoading && materials.length > 0 && page !== loadedPage
@@ -101,6 +216,18 @@ export function UploadedMaterialsView() {
 
     setLoading(true)
     setPage(nextPage)
+  }
+
+  function handleMaterialSaved(updated: Material) {
+    setMaterials((current) =>
+      current.map((material) => (material.id === updated.id ? updated : material)),
+    )
+  }
+
+  function handleMaterialDeleted(deleted: Material) {
+    setMaterials((current) => current.filter((material) => material.id !== deleted.id))
+    setTotal((current) => Math.max(0, current - 1))
+    setReloadKey((key) => key + 1)
   }
 
   useEffect(() => {
@@ -178,7 +305,11 @@ export function UploadedMaterialsView() {
         >
           {materials.map((material) => (
             <MotionItem key={material.id}>
-              <UploadedMaterialItem material={material} />
+              <UploadedMaterialItem
+                material={material}
+                onDelete={() => setDeletingMaterial(material)}
+                onEdit={() => setEditingMaterial(material)}
+              />
             </MotionItem>
           ))}
         </PaginatedListTransition>
@@ -194,6 +325,27 @@ export function UploadedMaterialsView() {
           totalPages={totalPages}
           isDisabled={isLoading}
           onChange={handlePageChange}
+        />
+      ) : null}
+
+      {editingMaterial && token ? (
+        <MaterialUploadModal
+          editMaterial={editingMaterial}
+          isOpen={!!editingMaterial}
+          token={token}
+          onClose={() => setEditingMaterial(null)}
+          onEdited={handleMaterialSaved}
+        />
+      ) : null}
+
+      {deletingMaterial ? (
+        <DeleteUploadedMaterialDialog
+          isOpen={!!deletingMaterial}
+          material={deletingMaterial}
+          onDeleted={handleMaterialDeleted}
+          onOpenChange={(open) => {
+            if (!open) setDeletingMaterial(null)
+          }}
         />
       ) : null}
     </div>

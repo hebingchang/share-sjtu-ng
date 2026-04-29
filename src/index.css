@@ -65,6 +65,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.font-address {
+  font-family: Consolas, "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", Monaco, "Ubuntu Mono", monospace;
+}
+
 .soft-glow-panel {
   background-image:
     radial-gradient(

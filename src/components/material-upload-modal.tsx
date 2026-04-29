@@ -4,6 +4,7 @@ import {
   CircleXmarkFill,
   CloudArrowUpIn,
   FilePlus,
+  PencilToSquare,
   Person,
   TrashBin,
 } from '@gravity-ui/icons'
@@ -20,6 +21,7 @@ import {
   NumberField,
   Select,
   Spinner,
+  Switch,
   TextArea,
   TextField,
   type Key,
@@ -36,17 +38,20 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router'
 import { getCourseClasses, promptCourses } from '../api/courses'
-import { createMaterial, getMaterialTypes, requestMaterialUpload } from '../api/materials'
+import {
+  createMaterial,
+  getMaterialTypes,
+  requestMaterialUpload,
+  updateMaterial,
+} from '../api/materials'
 import { useDialog } from '../dialog/use-dialog'
 import type { Course } from '../types/course'
-import type { ClassSummary, MaterialType } from '../types/material'
+import type { ClassSummary, Material, MaterialType } from '../types/material'
 
 const COURSE_SEARCH_DEBOUNCE_MS = 260
 const MAX_FILE_SIZE = 100 * 1024 * 1024
 
-type DropZoneDropEvent = Parameters<
-  NonNullable<ComponentProps<typeof DropZone.Area>['onDrop']>
->[0]
+type DropZoneDropEvent = Parameters<NonNullable<ComponentProps<typeof DropZone.Area>['onDrop']>>[0]
 
 type UploadStatus = 'uploading' | 'complete' | 'failed'
 type FileFormatColor = 'blue' | 'gray' | 'green' | 'orange' | 'purple' | 'red'
@@ -125,6 +130,45 @@ function getTeacherName(classItem: ClassSummary): string {
   return classItem.teacher?.name?.trim() || '未知教师'
 }
 
+function getMaterialTeacherName(material: Material): string {
+  return material.class?.teacher?.name?.trim() || ''
+}
+
+function getMaterialCourse(material: Material): Course | null {
+  return material.course ?? material.class?.course ?? null
+}
+
+function getMaterialClassId(material: Material): Key | null {
+  return material.class_id ?? material.class?.id ?? null
+}
+
+function getMaterialAnonymous(material: Material): boolean {
+  return material.anonymous ?? true
+}
+
+function getMaterialFileName(material: Material): string {
+  return material.file_name || material.name || `资料 #${material.id}`
+}
+
+function mergeUpdatedMaterial({
+  current,
+  selectedType,
+  updated,
+}: {
+  current: Material
+  selectedType: MaterialType | null
+  updated: Material
+}): Material {
+  return {
+    ...current,
+    ...updated,
+    class: updated.class ?? current.class,
+    course: updated.course ?? current.course,
+    material_type: updated.material_type ?? selectedType ?? current.material_type,
+    material_type_id: updated.material_type_id ?? selectedType?.id ?? current.material_type_id,
+  }
+}
+
 function getTeacherOrganizationName(classItem: ClassSummary): string {
   return classItem.teacher?.organization?.name?.trim() ?? ''
 }
@@ -172,11 +216,11 @@ function isAbortError(error: unknown): boolean {
 }
 
 function uploadFileToSignedUrl({
-                                 file,
-                                 onProgress,
-                                 signal,
-                                 url,
-                               }: {
+  file,
+  onProgress,
+  signal,
+  url,
+}: {
   file: File
   onProgress: (progress: number) => void
   signal: AbortSignal
@@ -207,7 +251,7 @@ function uploadFileToSignedUrl({
       return
     }
 
-    signal.addEventListener('abort', abort, {once: true})
+    signal.addEventListener('abort', abort, { once: true })
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return
@@ -231,10 +275,10 @@ function uploadFileToSignedUrl({
 }
 
 function UploadEmptyState({
-                            error,
-                            inputValue,
-                            isSearching,
-                          }: {
+  error,
+  inputValue,
+  isSearching,
+}: {
   error: string | null
   inputValue: string
   isSearching: boolean
@@ -242,7 +286,7 @@ function UploadEmptyState({
   if (isSearching) {
     return (
       <div className="flex h-24 items-center justify-center gap-2 text-sm text-muted">
-        <Spinner size="sm"/>
+        <Spinner size="sm" />
         正在检索课程
       </div>
     )
@@ -273,15 +317,17 @@ function UploadEmptyState({
 }
 
 function buildValidationErrors({
-                                 description,
-                                 name,
-                                 points,
-                                 selectedClassId,
-                                 selectedCourse,
-                                 selectedMaterialTypeId,
-                                 uploadFile,
-                               }: {
+  description,
+  isEditMode,
+  name,
+  points,
+  selectedClassId,
+  selectedCourse,
+  selectedMaterialTypeId,
+  uploadFile,
+}: {
   description: string
+  isEditMode: boolean
   name: string
   points: number
   selectedClassId: Key | null
@@ -291,40 +337,48 @@ function buildValidationErrors({
 }): FormErrors {
   const errors: FormErrors = {}
 
-  if (!selectedCourse) errors.course = '请选择课程'
-  if (!selectedClassId) errors.teacher = '请选择教师'
   if (!selectedMaterialTypeId) errors.materialType = '请选择资料类型'
   if (!Number.isInteger(points) || points < 0 || points > 10) {
     errors.points = '积分需要是 0 到 10 的整数'
   }
   if (!name.trim()) errors.name = '请填写资料名称'
-  if (!description.trim()) {
-    errors.description = '请填写资料描述'
-  }
-  if (!uploadFile) {
-    errors.file = '请选择文件'
-  } else if (uploadFile.status === 'failed') {
-    errors.file = uploadFile.error || '文件上传失败，请重新上传'
-  } else if (uploadFile.status !== 'complete' || !uploadFile.path) {
-    errors.file = '文件仍在上传，请稍候'
+
+  if (!isEditMode) {
+    if (!selectedCourse) errors.course = '请选择课程'
+    if (!selectedClassId) errors.teacher = '请选择教师'
+    if (!description.trim()) {
+      errors.description = '请填写资料描述'
+    }
+    if (!uploadFile) {
+      errors.file = '请选择文件'
+    } else if (uploadFile.status === 'failed') {
+      errors.file = uploadFile.error || '文件上传失败，请重新上传'
+    } else if (uploadFile.status !== 'complete' || !uploadFile.path) {
+      errors.file = '文件仍在上传，请稍候'
+    }
   }
 
   return errors
 }
 
 export default function MaterialUploadModal({
-                                              initialSelection,
-                                              isOpen,
-                                              onClose,
-                                              token,
-                                            }: {
+  editMaterial,
+  initialSelection,
+  isOpen,
+  onClose,
+  onEdited,
+  token,
+}: {
+  editMaterial?: Material | null
   initialSelection?: MaterialUploadInitialSelection
   isOpen: boolean
   onClose: () => void
+  onEdited?: (material: Material) => void
   token: string
 }) {
   const navigate = useNavigate()
   const { showDialog } = useDialog()
+  const isEditMode = !!editMaterial
   const [courseInput, setCourseInput] = useState('')
   const [courseOptions, setCourseOptions] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
@@ -343,6 +397,7 @@ export default function MaterialUploadModal({
   const [materialTypesError, setMaterialTypesError] = useState<string | null>(null)
 
   const [points, setPoints] = useState(0)
+  const [anonymous, setAnonymous] = useState(true)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [uploadFile, setUploadFile] = useState<UploadFileState | null>(null)
@@ -379,6 +434,7 @@ export default function MaterialUploadModal({
     setClassesError(null)
     setSelectedMaterialTypeId(null)
     setPoints(0)
+    setAnonymous(true)
     setName('')
     setDescription('')
     setUploadFile(null)
@@ -386,16 +442,54 @@ export default function MaterialUploadModal({
     setSubmitting(false)
   }, [abortSubmit, abortUpload])
 
-  const initialSelectionKey =
-    isOpen && initialSelection
+  const editMaterialCourse = editMaterial ? getMaterialCourse(editMaterial) : null
+  const editMaterialClassId = editMaterial ? getMaterialClassId(editMaterial) : null
+  const editMaterialKey =
+    isOpen && editMaterial
       ? [
-        initialSelection.course.id,
-        initialSelection.classId ?? '',
-        initialSelection.teacherName ?? '',
-      ].join(':')
+          'edit',
+          editMaterial.id,
+          editMaterial.name,
+          editMaterial.description,
+          editMaterial.material_type_id,
+          editMaterial.points,
+          getMaterialAnonymous(editMaterial),
+        ].join(':')
+      : null
+  const initialSelectionKey =
+    !isEditMode && isOpen && initialSelection
+      ? [
+          initialSelection.course.id,
+          initialSelection.classId ?? '',
+          initialSelection.teacherName ?? '',
+        ].join(':')
       : null
 
-  if (
+  if (editMaterial && editMaterialKey && appliedInitialSelectionKey !== editMaterialKey) {
+    const normalizedClassId = editMaterialClassId == null ? null : String(editMaterialClassId)
+    setAppliedInitialSelectionKey(editMaterialKey)
+    setCourseInput(editMaterialCourse ? formatCourseLabel(editMaterialCourse) : '')
+    setCourseOptions(editMaterialCourse ? [editMaterialCourse] : [])
+    setSelectedCourse(editMaterialCourse)
+    setCourseSearching(false)
+    setCourseSearchError(null)
+    setClasses([])
+    setSelectedClassId(normalizedClassId)
+    setTeacherInput(getMaterialTeacherName(editMaterial))
+    setClassesLoading(false)
+    setClassesError(null)
+    setSelectedMaterialTypeId(
+      editMaterial.material_type_id ? String(editMaterial.material_type_id) : null,
+    )
+    setPoints(editMaterial.points)
+    setAnonymous(getMaterialAnonymous(editMaterial))
+    setName(editMaterial.name)
+    setDescription(editMaterial.description)
+    setUploadFile(null)
+    setSubmitAttempted(false)
+    setSubmitting(false)
+  } else if (
+    !isEditMode &&
     initialSelection &&
     initialSelectionKey &&
     appliedInitialSelectionKey !== initialSelectionKey
@@ -410,21 +504,24 @@ export default function MaterialUploadModal({
     setCourseSearchError(null)
     setClasses([])
     setSelectedClassId(normalizedClassId)
-    setTeacherInput(normalizedClassId ? teacherName ?? '' : '')
+    setTeacherInput(normalizedClassId ? (teacherName ?? '') : '')
     setClassesLoading(true)
     setClassesError(null)
   }
 
-  useEffect(() => () => {
-    abortUpload()
-    abortSubmit()
-  }, [abortSubmit, abortUpload])
+  useEffect(
+    () => () => {
+      abortUpload()
+      abortSubmit()
+    },
+    [abortSubmit, abortUpload],
+  )
 
   useEffect(() => {
     if (!isOpen) return
 
     const controller = new AbortController()
-    getMaterialTypes({token, signal: controller.signal})
+    getMaterialTypes({ token, signal: controller.signal })
       .then((types) => {
         if (controller.signal.aborted) return
         setMaterialTypes(types)
@@ -443,7 +540,7 @@ export default function MaterialUploadModal({
   }, [isOpen, token])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || isEditMode) return
 
     const keyword = courseInput.trim()
     if (selectedCourse && keyword === formatCourseLabel(selectedCourse)) {
@@ -456,7 +553,7 @@ export default function MaterialUploadModal({
     const controller = new AbortController()
     const timeout = window.setTimeout(() => {
       setCourseSearching(true)
-      promptCourses({keyword, token, signal: controller.signal})
+      promptCourses({ keyword, token, signal: controller.signal })
         .then((courses) => {
           if (controller.signal.aborted) return
           setCourseOptions(courses)
@@ -476,15 +573,15 @@ export default function MaterialUploadModal({
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [courseInput, isOpen, selectedCourse, token])
+  }, [courseInput, isEditMode, isOpen, selectedCourse, token])
 
   const selectedCourseId = selectedCourse?.id ?? null
 
   useEffect(() => {
-    if (!isOpen || selectedCourseId == null) return
+    if (!isOpen || selectedCourseId == null || isEditMode) return
 
     const controller = new AbortController()
-    getCourseClasses({id: selectedCourseId, token, signal: controller.signal})
+    getCourseClasses({ id: selectedCourseId, token, signal: controller.signal })
       .then((nextClasses) => {
         if (controller.signal.aborted) return
         setClasses(nextClasses)
@@ -500,12 +597,13 @@ export default function MaterialUploadModal({
       })
 
     return () => controller.abort()
-  }, [isOpen, selectedCourseId, token])
+  }, [isEditMode, isOpen, selectedCourseId, token])
 
   const validationErrors = useMemo(
     () =>
       buildValidationErrors({
         description,
+        isEditMode,
         name,
         points,
         selectedClassId,
@@ -513,7 +611,16 @@ export default function MaterialUploadModal({
         selectedMaterialTypeId,
         uploadFile,
       }),
-    [description, name, points, selectedClassId, selectedCourse, selectedMaterialTypeId, uploadFile],
+    [
+      description,
+      isEditMode,
+      name,
+      points,
+      selectedClassId,
+      selectedCourse,
+      selectedMaterialTypeId,
+      uploadFile,
+    ],
   )
   const hasValidationErrors = Object.keys(validationErrors).length > 0
   const visibleErrors = submitAttempted ? validationErrors : {}
@@ -638,7 +745,7 @@ export default function MaterialUploadModal({
 
       const controller = new AbortController()
       uploadControllerRef.current = controller
-      setUploadFile({...baseState, progress: 2})
+      setUploadFile({ ...baseState, progress: 2 })
 
       requestMaterialUpload({
         fileName: file.name,
@@ -649,7 +756,7 @@ export default function MaterialUploadModal({
         .then((ticket) => {
           if (controller.signal.aborted) return null
           setUploadFile((current) =>
-            current?.id === id ? {...current, path: ticket.path, progress: 8} : current,
+            current?.id === id ? { ...current, path: ticket.path, progress: 8 } : current,
           )
 
           return uploadFileToSignedUrl({
@@ -659,7 +766,7 @@ export default function MaterialUploadModal({
             onProgress: (progress) => {
               setUploadFile((current) =>
                 current?.id === id
-                  ? {...current, progress: Math.min(99, Math.max(current.progress, progress))}
+                  ? { ...current, progress: Math.min(99, Math.max(current.progress, progress)) }
                   : current,
               )
             },
@@ -668,9 +775,7 @@ export default function MaterialUploadModal({
         .then((path) => {
           if (!path || controller.signal.aborted) return
           setUploadFile((current) =>
-            current?.id === id
-              ? {...current, path, progress: 100, status: 'complete'}
-              : current,
+            current?.id === id ? { ...current, path, progress: 100, status: 'complete' } : current,
           )
         })
         .catch((error) => {
@@ -678,10 +783,10 @@ export default function MaterialUploadModal({
           setUploadFile((current) =>
             current?.id === id
               ? {
-                ...current,
-                error: error instanceof Error ? error.message : '文件上传失败',
-                status: 'failed',
-              }
+                  ...current,
+                  error: error instanceof Error ? error.message : '文件上传失败',
+                  status: 'failed',
+                }
               : current,
           )
         })
@@ -723,18 +828,19 @@ export default function MaterialUploadModal({
     if (uploadFile?.file) startFileUpload(uploadFile.file)
   }, [startFileUpload, uploadFile])
 
+  const selectedMaterialType = materialTypes.find(
+    (type) => String(type.id) === String(selectedMaterialTypeId),
+  )
+  const materialNamePlaceholder = getMaterialNamePlaceholder(selectedMaterialType?.name)
+  const currentMaterialFileName = editMaterial ? getMaterialFileName(editMaterial) : ''
+  const currentMaterialFileExtension = getExtension(currentMaterialFileName)
+
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault()
       setSubmitAttempted(true)
 
-      if (
-        hasValidationErrors ||
-        !selectedCourse ||
-        !selectedClassId ||
-        !selectedMaterialTypeId ||
-        !uploadFile?.path
-      ) {
+      if (hasValidationErrors || !selectedMaterialTypeId) {
         return
       }
 
@@ -743,10 +849,74 @@ export default function MaterialUploadModal({
       submitControllerRef.current = controller
       setSubmitting(true)
 
+      if (isEditMode) {
+        if (!editMaterial) return
+
+        updateMaterial({
+          id: editMaterial.id,
+          token,
+          signal: controller.signal,
+          data: {
+            anonymous,
+            description: description.trim(),
+            material_type_id: Number(selectedMaterialTypeId),
+            name: name.trim(),
+            points,
+          },
+        })
+          .then((material) => {
+            if (controller.signal.aborted) return
+            const merged = mergeUpdatedMaterial({
+              current: editMaterial,
+              selectedType: selectedMaterialType ?? null,
+              updated: material,
+            })
+
+            if (submitControllerRef.current === controller) {
+              submitControllerRef.current = null
+            }
+            showDialog({
+              status: 'success',
+              title: '资料已更新',
+              description: `「${merged.name || merged.file_name}」的资料信息已保存。`,
+              onClose: () => {
+                onEdited?.(merged)
+                resetForm()
+                onClose()
+              },
+            })
+          })
+          .catch((error) => {
+            if (isAbortError(error)) return
+            showDialog({
+              status: 'danger',
+              title: '更新失败',
+              description: error instanceof Error ? error.message : '请稍后再试',
+            })
+          })
+          .finally(() => {
+            if (controller.signal.aborted) return
+            setSubmitting(false)
+            if (submitControllerRef.current === controller) {
+              submitControllerRef.current = null
+            }
+          })
+        return
+      }
+
+      if (!selectedCourse || !selectedClassId || !uploadFile?.path) {
+        setSubmitting(false)
+        if (submitControllerRef.current === controller) {
+          submitControllerRef.current = null
+        }
+        return
+      }
+
       createMaterial({
         token,
         signal: controller.signal,
         data: {
+          anonymous,
           class_id: Number(selectedClassId),
           course_id: selectedCourse.id,
           description: description.trim(),
@@ -797,16 +967,21 @@ export default function MaterialUploadModal({
     },
     [
       abortSubmit,
+      anonymous,
       description,
+      editMaterial,
       hasValidationErrors,
+      isEditMode,
       name,
       navigate,
       onClose,
+      onEdited,
       points,
       resetForm,
       selectedClassId,
       selectedCourse,
       selectedMaterialTypeId,
+      selectedMaterialType,
       showDialog,
       token,
       uploadFile,
@@ -826,11 +1001,7 @@ export default function MaterialUploadModal({
     handleOpenChange(false)
   }, [handleOpenChange])
 
-  const selectedMaterialType = materialTypes.find(
-    (type) => String(type.id) === String(selectedMaterialTypeId),
-  )
-  const materialNamePlaceholder = getMaterialNamePlaceholder(selectedMaterialType?.name)
-  const isFileUploading = uploadFile?.status === 'uploading'
+  const isFileUploading = !isEditMode && uploadFile?.status === 'uploading'
   const canSubmit = !isSubmitting && !isFileUploading
 
   return (
@@ -842,28 +1013,34 @@ export default function MaterialUploadModal({
         size="lg"
       >
         <Modal.Dialog
-          aria-label="上传资料"
+          aria-label={isEditMode ? '编辑资料' : '上传资料'}
           className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl bg-background p-0 shadow-[0_24px_80px_rgb(0_0_0/0.2)] dark:border dark:border-white/10 dark:shadow-[0_28px_90px_rgb(0_0_0/0.72),0_0_0_1px_rgb(255_255_255/0.04)] sm:max-w-240"
         >
-          <Modal.CloseTrigger className="right-4 top-4 sm:right-6 sm:top-6"/>
+          <Modal.CloseTrigger className="right-4 top-4 sm:right-6 sm:top-6" />
           <Modal.Header className="border-b border-separator bg-surface/60 px-5 py-5 sm:px-7">
             <div className="flex min-w-0 items-start gap-3 pr-10">
               <Modal.Icon className="mt-0.5 bg-accent-soft text-accent-soft-foreground">
-                <FilePlus className="size-5"/>
+                {isEditMode ? (
+                  <PencilToSquare className="size-5" />
+                ) : (
+                  <FilePlus className="size-5" />
+                )}
               </Modal.Icon>
               <div className="min-w-0">
                 <Modal.Heading className="text-xl font-semibold leading-7">
-                  上传资料
+                  {isEditMode ? '编辑资料' : '上传资料'}
                 </Modal.Heading>
                 <p className="mt-1 text-sm leading-6 text-muted">
-                  选择课程、教师和资料类型后，上传文件并提交资料信息。
+                  {isEditMode
+                    ? '课程、教师和文件保持不变，可更新资料名称、描述、类型和积分。'
+                    : '选择课程、教师和资料类型后，上传文件并提交资料信息。'}
                 </p>
               </div>
             </div>
           </Modal.Header>
 
           <Form
-            aria-label="上传资料表单"
+            aria-label={isEditMode ? '编辑资料表单' : '上传资料表单'}
             className="flex min-h-0 flex-1 flex-col"
             validationBehavior="aria"
             onSubmit={handleSubmit}
@@ -873,7 +1050,7 @@ export default function MaterialUploadModal({
                 <div className="flex min-w-0 flex-col gap-4">
                   <div className="rounded-2xl border border-border/70 bg-surface/60 p-4">
                     <div className="mb-4 flex items-center gap-2">
-                      <Books className="size-4 text-accent"/>
+                      <Books className="size-4 text-accent" />
                       <h3 className="text-sm font-semibold text-foreground">课程信息</h3>
                     </div>
 
@@ -882,6 +1059,7 @@ export default function MaterialUploadModal({
                         allowsEmptyCollection
                         className="w-full"
                         inputValue={courseInput}
+                        isDisabled={isEditMode}
                         isInvalid={!!visibleErrors.course}
                         menuTrigger="input"
                         selectedKey={selectedCourse ? String(selectedCourse.id) : null}
@@ -890,10 +1068,10 @@ export default function MaterialUploadModal({
                       >
                         <Label>课程</Label>
                         <ComboBox.InputGroup>
-                          <Input placeholder="课程名或课号"/>
-                          <ComboBox.Trigger/>
+                          <Input placeholder="课程名或课号" />
+                          <ComboBox.Trigger />
                         </ComboBox.InputGroup>
-                        <Description>至少输入两个字搜索课程</Description>
+                        {isEditMode ? null : <Description>至少输入两个字搜索课程</Description>}
                         <FieldError>{visibleErrors.course}</FieldError>
                         <ComboBox.Popover>
                           <ListBox
@@ -921,7 +1099,7 @@ export default function MaterialUploadModal({
                                       {[course.code, organization].filter(Boolean).join(' · ')}
                                     </span>
                                   </div>
-                                  <ListBox.ItemIndicator/>
+                                  <ListBox.ItemIndicator />
                                 </ListBox.Item>
                               )
                             })}
@@ -934,7 +1112,9 @@ export default function MaterialUploadModal({
                         className="w-full"
                         defaultFilter={() => true}
                         inputValue={teacherInput}
-                        isDisabled={!selectedCourse || isClassesLoading || classes.length === 0}
+                        isDisabled={
+                          isEditMode || !selectedCourse || isClassesLoading || classes.length === 0
+                        }
                         isInvalid={!!visibleErrors.teacher || !!classesError}
                         menuTrigger="focus"
                         selectedKey={selectedClassId}
@@ -952,11 +1132,11 @@ export default function MaterialUploadModal({
                                   : '请先选择课程'
                             }
                           />
-                          <ComboBox.Trigger/>
+                          <ComboBox.Trigger />
                         </ComboBox.InputGroup>
-                        <Description>
-                          如果没有找到相应教师，请联系我们。
-                        </Description>
+                        {isEditMode ? null : (
+                          <Description>如果没有找到相应教师，请联系我们。</Description>
+                        )}
                         <FieldError>{classesError || visibleErrors.teacher}</FieldError>
                         <ComboBox.Popover>
                           <ListBox
@@ -975,7 +1155,7 @@ export default function MaterialUploadModal({
                                   id={String(classItem.id)}
                                   textValue={teacher}
                                 >
-                                  <Person className="size-4 shrink-0 text-muted"/>
+                                  <Person className="size-4 shrink-0 text-muted" />
                                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                                     <span className="truncate text-sm font-medium">{teacher}</span>
                                     {organization ? (
@@ -984,7 +1164,7 @@ export default function MaterialUploadModal({
                                       </span>
                                     ) : null}
                                   </div>
-                                  <ListBox.ItemIndicator/>
+                                  <ListBox.ItemIndicator />
                                 </ListBox.Item>
                               )
                             })}
@@ -996,17 +1176,12 @@ export default function MaterialUploadModal({
 
                   <div className="rounded-2xl border border-border/70 bg-surface/60 p-4">
                     <div className="mb-4 flex items-center gap-2">
-                      <FilePlus className="size-4 text-accent"/>
+                      <FilePlus className="size-4 text-accent" />
                       <h3 className="text-sm font-semibold text-foreground">资料内容</h3>
                     </div>
 
                     <div className="flex flex-col gap-4">
-                      <TextField
-                        fullWidth
-                        isInvalid={!!visibleErrors.name}
-                        name="name"
-                        type="text"
-                      >
+                      <TextField fullWidth isInvalid={!!visibleErrors.name} name="name" type="text">
                         <Label>资料名称</Label>
                         <Input
                           placeholder={materialNamePlaceholder}
@@ -1041,7 +1216,7 @@ export default function MaterialUploadModal({
                 <div className="flex min-w-0 flex-col gap-4">
                   <div className="rounded-2xl border border-border/70 bg-surface/60 p-4">
                     <div className="mb-4 flex items-center gap-2">
-                      <FilePlus className="size-4 text-accent"/>
+                      <FilePlus className="size-4 text-accent" />
                       <h3 className="text-sm font-semibold text-foreground">资料设置</h3>
                     </div>
 
@@ -1058,16 +1233,20 @@ export default function MaterialUploadModal({
                       >
                         <Label>资料类型</Label>
                         <Select.Trigger>
-                          <Select.Value/>
-                          <Select.Indicator/>
+                          <Select.Value />
+                          <Select.Indicator />
                         </Select.Trigger>
                         <FieldError>{materialTypesError || visibleErrors.materialType}</FieldError>
                         <Select.Popover>
                           <ListBox>
                             {materialTypes.map((type) => (
-                              <ListBox.Item key={type.id} id={String(type.id)} textValue={type.name}>
+                              <ListBox.Item
+                                key={type.id}
+                                id={String(type.id)}
+                                textValue={type.name}
+                              >
                                 {type.name}
-                                <ListBox.ItemIndicator/>
+                                <ListBox.ItemIndicator />
                               </ListBox.Item>
                             ))}
                           </ListBox>
@@ -1077,7 +1256,7 @@ export default function MaterialUploadModal({
                       <NumberField
                         fullWidth
                         className="w-full"
-                        formatOptions={{maximumFractionDigits: 0}}
+                        formatOptions={{ maximumFractionDigits: 0 }}
                         isInvalid={!!visibleErrors.points}
                         maxValue={10}
                         minValue={0}
@@ -1091,31 +1270,72 @@ export default function MaterialUploadModal({
                       >
                         <Label>所需积分</Label>
                         <NumberField.Group className="w-full">
-                          <NumberField.DecrementButton/>
-                          <NumberField.Input className="w-full text-center tabular-nums"/>
-                          <NumberField.IncrementButton/>
+                          <NumberField.DecrementButton />
+                          <NumberField.Input className="w-full text-center tabular-nums" />
+                          <NumberField.IncrementButton />
                         </NumberField.Group>
                         <Description>0 到 10 的整数</Description>
                         <FieldError>{visibleErrors.points}</FieldError>
                       </NumberField>
+
+                      <Switch
+                        className="sm:col-span-2"
+                        isSelected={anonymous}
+                        name="anonymous"
+                        onChange={setAnonymous}
+                      >
+                        <Switch.Control>
+                          <Switch.Thumb />
+                        </Switch.Control>
+                        <Switch.Content>
+                          <Label className="text-sm">{isEditMode ? '匿名展示' : '匿名上传'}</Label>
+                          <Description>
+                            开启后资料详情中显示为匿名用户；关闭后显示你的昵称。
+                          </Description>
+                        </Switch.Content>
+                      </Switch>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-border/70 bg-surface/60 p-4">
                     <DropZone className="w-full">
-                      <DropZone.Area isDisabled={isSubmitting} onDrop={handleDrop}>
+                      <DropZone.Area
+                        isDisabled={isSubmitting || isEditMode}
+                        onDrop={isEditMode ? undefined : handleDrop}
+                      >
                         <DropZone.Icon>
-                          <CloudArrowUpIn/>
+                          <CloudArrowUpIn />
                         </DropZone.Icon>
                         <DropZone.Label>
-                          {uploadFile ? '替换资料文件' : '选择资料文件'}
+                          {isEditMode ? '已上传文件' : uploadFile ? '替换资料文件' : '选择资料文件'}
                         </DropZone.Label>
-                        <DropZone.Description>单个文件，最大 100 MB</DropZone.Description>
-                        <DropZone.Trigger isDisabled={isSubmitting}>选择文件</DropZone.Trigger>
+                        <DropZone.Description>
+                          {isEditMode ? currentMaterialFileName : '单个文件，最大 100 MB'}
+                        </DropZone.Description>
+                        <DropZone.Trigger isDisabled={isSubmitting || isEditMode}>
+                          选择文件
+                        </DropZone.Trigger>
                       </DropZone.Area>
-                      <DropZone.Input onSelect={handleFileSelect}/>
+                      {isEditMode ? null : <DropZone.Input onSelect={handleFileSelect} />}
 
-                      {uploadFile ? (
+                      {isEditMode && editMaterial ? (
+                        <DropZone.FileList>
+                          <DropZone.FileItem status="complete">
+                            <DropZone.FileFormatIcon
+                              color={getFormatColor(currentMaterialFileExtension)}
+                              format={currentMaterialFileExtension.toUpperCase() || 'FILE'}
+                            />
+                            <DropZone.FileInfo>
+                              <DropZone.FileName>{currentMaterialFileName}</DropZone.FileName>
+                              <DropZone.FileMeta>
+                                {[formatFileSize(editMaterial.size), '当前文件']
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </DropZone.FileMeta>
+                            </DropZone.FileInfo>
+                          </DropZone.FileItem>
+                        </DropZone.FileList>
+                      ) : uploadFile ? (
                         <DropZone.FileList>
                           <DropZone.FileItem status={uploadFile.status}>
                             <DropZone.FileFormatIcon
@@ -1132,20 +1352,20 @@ export default function MaterialUploadModal({
                                 {uploadFile.status === 'complete' ? (
                                   <span className="inline-flex items-center gap-1 text-success">
                                     {' '}
-                                    · <CircleCheckFill className="size-3"/> 已上传
+                                    · <CircleCheckFill className="size-3" /> 已上传
                                   </span>
                                 ) : null}
                                 {uploadFile.status === 'failed' ? (
                                   <span className="inline-flex items-center gap-1 text-danger">
                                     {' '}
-                                    · <CircleXmarkFill className="size-3"/> 上传失败
+                                    · <CircleXmarkFill className="size-3" /> 上传失败
                                   </span>
                                 ) : null}
                               </DropZone.FileMeta>
                               {uploadFile.status !== 'failed' ? (
                                 <DropZone.FileProgress value={uploadFile.progress}>
                                   <DropZone.FileProgressTrack>
-                                    <DropZone.FileProgressFill/>
+                                    <DropZone.FileProgressFill />
                                   </DropZone.FileProgressTrack>
                                 </DropZone.FileProgress>
                               ) : (
@@ -1168,7 +1388,7 @@ export default function MaterialUploadModal({
                               aria-label={`移除 ${uploadFile.name}`}
                               onPress={handleRemoveFile}
                             >
-                              <TrashBin/>
+                              <TrashBin />
                             </DropZone.FileRemoveTrigger>
                           </DropZone.FileItem>
                         </DropZone.FileList>
@@ -1193,7 +1413,7 @@ export default function MaterialUploadModal({
                 type="submit"
                 variant="primary"
               >
-                {isFileUploading ? '文件上传中' : '提交资料'}
+                {isEditMode ? '保存修改' : isFileUploading ? '文件上传中' : '提交资料'}
               </Button>
             </Modal.Footer>
           </Form>

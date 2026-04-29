@@ -17,7 +17,12 @@ interface RequestOptions {
 
 async function request<T>(
   path: string,
-  { token, signal, method = 'GET', body }: RequestOptions & {
+  {
+    token,
+    signal,
+    method = 'GET',
+    body,
+  }: RequestOptions & {
     method?: string
     body?: unknown
   },
@@ -50,6 +55,7 @@ export interface MaterialUploadTicket {
 }
 
 export interface CreateMaterialPayload {
+  anonymous: boolean
   class_id: number
   course_id: number
   description: string
@@ -59,15 +65,16 @@ export interface CreateMaterialPayload {
   points: number
 }
 
-export async function getMaterialTypes({
-  token,
-  signal,
-}: RequestOptions): Promise<MaterialType[]> {
-  return request<MaterialType[]>(
-    '/api/v1/material-type',
-    { token, signal },
-    '获取资料类型失败',
-  )
+export interface UpdateMaterialPayload {
+  anonymous: boolean
+  description: string
+  material_type_id: number
+  name: string
+  points: number
+}
+
+export async function getMaterialTypes({ token, signal }: RequestOptions): Promise<MaterialType[]> {
+  return request<MaterialType[]>('/api/v1/material-type', { token, signal }, '获取资料类型失败')
 }
 
 export async function requestMaterialUpload({
@@ -110,6 +117,39 @@ export async function createMaterial({
       body: data,
     },
     '提交资料失败',
+  )
+}
+
+export async function updateMaterial({
+  data,
+  id,
+  token,
+  signal,
+}: {
+  data: UpdateMaterialPayload
+  id: string | number
+} & RequestOptions): Promise<Material> {
+  return request<Material>(
+    `/api/v1/material/edit/${encodeURIComponent(String(id))}`,
+    {
+      token,
+      signal,
+      method: 'PUT',
+      body: data,
+    },
+    '更新资料失败',
+  )
+}
+
+export async function deleteMaterial({
+  id,
+  token,
+  signal,
+}: { id: string | number } & RequestOptions): Promise<void> {
+  await request<unknown>(
+    `/api/v1/material/delete/${encodeURIComponent(String(id))}`,
+    { token, signal, method: 'DELETE' },
+    '删除资料失败',
   )
 }
 

@@ -1647,19 +1647,19 @@ function CommentInput({
             <motion.div
               key="reply-target"
               initial={{ opacity: 0, height: 0, marginBottom: 0, y: -2 }}
-              animate={{ opacity: 1, height: 'auto', marginBottom: 10, y: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginBottom: 6, y: 0 }}
               exit={{ opacity: 0, height: 0, marginBottom: 0, y: -2 }}
               transition={{ duration: 0.22, ease: easing }}
-              className="overflow-hidden"
+              className="overflow-hidden px-4 pt-3 sm:px-5"
             >
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-accent-soft px-3 py-1.5 text-xs text-accent">
-                <span className="flex items-center gap-1.5">
-                  <Person className="size-3.5" />
-                  正在回复 @{replyTarget.nickname}
+              <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-accent-soft px-2.5 py-1 text-xs text-accent">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Person className="size-3.5 shrink-0" />
+                  <span className="truncate">正在回复 @{replyTarget.nickname}</span>
                 </span>
                 <button
                   aria-label="取消回复"
-                  className="cursor-(--cursor-interactive) rounded-full p-0.5 hover:bg-accent/10"
+                  className="-mr-1 flex size-5 shrink-0 cursor-(--cursor-interactive) items-center justify-center rounded-full hover:bg-accent/10"
                   onClick={onCancelReply}
                   type="button"
                 >
@@ -1672,7 +1672,9 @@ function CommentInput({
 
         <TextArea
           aria-label="评论输入框"
-          className="max-h-36 min-h-18 w-full resize-none border-0 bg-transparent px-4 pb-3 pt-4 sm:px-5 text-sm leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0"
+          className={`max-h-36 min-h-18 w-full resize-none border-0 bg-transparent px-4 pb-3 ${
+            replyTarget ? 'pt-1' : 'pt-4'
+          } text-sm leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0 sm:px-5`}
           maxLength={COMMENT_MAX_LENGTH + 50}
           placeholder={placeholder}
           ref={inputRef}
@@ -1689,7 +1691,7 @@ function CommentInput({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-surface-secondary/55 px-4 py-2 text-xs sm:px-5 sm:py-2.5">
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-surface-secondary/55 px-2 py-2 text-xs sm:pr-2 sm:pl-5 sm:py-2">
         <span
           className={`tabular-nums ${
             overLimit ? 'text-danger' : 'text-muted'

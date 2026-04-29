@@ -4,6 +4,7 @@ import { BasicInfoView } from './basic'
 import { UserCenterLayout } from './layout'
 import { PointsPlaceholderView } from './placeholder'
 import { PointLogsView } from './point-logs'
+import { PointTransferView } from './point-transfer'
 import { PurchasedMaterialsView } from './purchased-materials'
 import { UploadedMaterialsView } from './uploaded-materials'
 
@@ -22,7 +23,7 @@ export default function UserPage() {
         <Route path="point_logs" element={<Navigate replace to="/user/points/logs" />} />
         <Route path="points/logs" element={<PointLogsView />} />
         <Route path="points/redeem" element={<PointsPlaceholderView kind="redeem" />} />
-        <Route path="points/gift" element={<PointsPlaceholderView kind="gift" />} />
+        <Route path="points/gift" element={<PointTransferView />} />
         <Route path="*" element={<Navigate replace to="/user/basic" />} />
       </Route>
     </Routes>

@@ -1,17 +1,13 @@
-import { ChartLine } from '@gravity-ui/icons'
-import { Spinner } from '@heroui/react'
+import { ChartLine, Funnel } from '@gravity-ui/icons'
+import { Label, ListBox, Select, Spinner, type Key } from '@heroui/react'
 import { DataGrid, type DataGridColumn, type DataGridSortDescriptor } from '@heroui-pro/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { getUserPointLogs, type PointLogSortBy, type PointLogSortOrder } from '../../api/user'
 import { useAuth } from '../../auth/use-auth'
-import type { PointLog } from '../../types/user'
+import type { PointLog, PointLogType } from '../../types/user'
 import { USER_POINT_LOGS_PAGE_SIZE } from './constants'
-import {
-  EmptyPanel,
-  ErrorPanel,
-  UserPagination,
-} from './shared'
+import { EmptyPanel, ErrorPanel, UserPagination } from './shared'
 import { cx, formatDateTime, getMaterialLink, isAbortError } from './utils'
 
 interface PointLogRow extends PointLog {
@@ -19,16 +15,34 @@ interface PointLogRow extends PointLog {
   hasMaterial: boolean
   materialLink: string | null
   materialName: string
+  typeText: string
 }
 
 const POINT_LOG_COLUMN_CLASSES = {
-  message: 'w-[20%]',
+  message: 'w-[22%]',
+  type: 'w-[13%]',
   delta: 'w-[10%]',
-  date: 'w-[24%]',
-  material: 'w-[46%]',
+  date: 'w-[22%]',
+  material: 'w-[33%]',
 } as const
 const POINT_LOG_COLUMN_CLASS = 'overflow-hidden whitespace-nowrap'
 const POINT_LOG_TEXT_CLASS = 'block min-w-0 max-w-full truncate'
+const POINT_LOG_TYPE_FILTER_ALL = 'all'
+type PointLogTypeFilter = PointLogType | typeof POINT_LOG_TYPE_FILTER_ALL
+
+const POINT_LOG_TYPE_LABELS: Record<PointLogType, string> = {
+  bonus: '奖励',
+  materials: '资料',
+  redeem: '兑换',
+  transfer: '转账',
+}
+const POINT_LOG_TYPE_OPTIONS: { id: PointLogTypeFilter; label: string }[] = [
+  { id: POINT_LOG_TYPE_FILTER_ALL, label: '全部类型' },
+  { id: 'materials', label: POINT_LOG_TYPE_LABELS.materials },
+  { id: 'redeem', label: POINT_LOG_TYPE_LABELS.redeem },
+  { id: 'bonus', label: POINT_LOG_TYPE_LABELS.bonus },
+  { id: 'transfer', label: POINT_LOG_TYPE_LABELS.transfer },
+]
 
 function getPointLogColumnClassNames(widthClassName: string, cellClassName?: string) {
   return {
@@ -41,6 +55,20 @@ function getMaterialName(log: PointLog): string | null {
   return log.material?.name || log.material?.file_name || null
 }
 
+function isPointLogType(value: unknown): value is PointLogType {
+  return typeof value === 'string' && value in POINT_LOG_TYPE_LABELS
+}
+
+function getPointLogTypeLabel(value: unknown): string {
+  return isPointLogType(value) ? POINT_LOG_TYPE_LABELS[value] : '其他'
+}
+
+function getPointLogTypeFilter(value: Key | null): PointLogTypeFilter {
+  const nextValue = String(value ?? POINT_LOG_TYPE_FILTER_ALL)
+
+  return isPointLogType(nextValue) ? nextValue : POINT_LOG_TYPE_FILTER_ALL
+}
+
 function PointDeltaText({ delta }: { delta: number }) {
   const deltaText = `${delta > 0 ? '+' : ''}${delta}`
 
@@ -49,7 +77,7 @@ function PointDeltaText({ delta }: { delta: number }) {
       className={cx(
         POINT_LOG_TEXT_CLASS,
         'font-medium tabular-nums',
-        delta == 0 ? 'text-muted' : (delta > 0 ? 'text-success' : 'text-danger'),
+        delta == 0 ? 'text-muted' : delta > 0 ? 'text-success' : 'text-danger',
       )}
       title={deltaText}
     >
@@ -89,6 +117,17 @@ function PointLogMaterialCell({ log }: { log: PointLogRow }) {
   )
 }
 
+function PointLogTypeCell({ log }: { log: PointLogRow }) {
+  return (
+    <span
+      className="inline-flex max-w-full items-center rounded-full bg-surface-secondary px-2 py-0.5 text-xs font-medium text-muted"
+      title={log.type}
+    >
+      <span className={POINT_LOG_TEXT_CLASS}>{log.typeText}</span>
+    </span>
+  )
+}
+
 function PointLogsLoadingBadge() {
   return (
     <div className="flex items-center gap-2 rounded-full border border-border/70 bg-surface/95 px-3 py-2 text-sm text-muted shadow-surface">
@@ -110,9 +149,7 @@ function getPointLogSortBy(column: DataGridSortDescriptor['column']): PointLogSo
   return column === 'delta' ? 'delta' : 'date'
 }
 
-function getPointLogSortOrder(
-  direction: DataGridSortDescriptor['direction'],
-): PointLogSortOrder {
+function getPointLogSortOrder(direction: DataGridSortDescriptor['direction']): PointLogSortOrder {
   return direction === 'ascending' ? 'asc' : 'desc'
 }
 
@@ -124,10 +161,12 @@ export function PointLogsView() {
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [typeFilter, setTypeFilter] = useState<PointLogTypeFilter>(POINT_LOG_TYPE_FILTER_ALL)
   const [sortDescriptor, setSortDescriptor] = useState<DataGridSortDescriptor>({
     column: 'date',
     direction: 'descending',
   })
+  const hasTypeFilter = typeFilter !== POINT_LOG_TYPE_FILTER_ALL
   const sortBy = getPointLogSortBy(sortDescriptor.column)
   const sortOrder = getPointLogSortOrder(sortDescriptor.direction)
   const totalPages = Math.max(1, Math.ceil(total / USER_POINT_LOGS_PAGE_SIZE))
@@ -140,6 +179,7 @@ export function PointLogsView() {
         hasMaterial: !!getMaterialName(log),
         materialLink: getMaterialLink(log.material ?? null),
         materialName: getMaterialName(log) ?? '无关联资料',
+        typeText: getPointLogTypeLabel(log.type),
       })),
     [logs],
   )
@@ -159,6 +199,13 @@ export function PointLogsView() {
             {log.message || '积分变动'}
           </span>
         ),
+      },
+      {
+        id: 'type',
+        header: '类型',
+        accessorKey: 'typeText',
+        ...getPointLogColumnClassNames(POINT_LOG_COLUMN_CLASSES.type),
+        cell: (log) => <PointLogTypeCell log={log} />,
       },
       {
         id: 'delta',
@@ -208,12 +255,26 @@ export function PointLogsView() {
     },
     [page, sortDescriptor.column, sortDescriptor.direction],
   )
-  const handlePageChange = useCallback((nextPage: number) => {
-    if (nextPage === page) return
+  const handleTypeFilterChange = useCallback(
+    (nextValue: Key | null) => {
+      const nextTypeFilter = getPointLogTypeFilter(nextValue)
+      if (nextTypeFilter === typeFilter && page === 1) return
 
-    setLoading(true)
-    setPage(nextPage)
-  }, [page])
+      setLoading(true)
+      setTypeFilter(nextTypeFilter)
+      setPage(1)
+    },
+    [page, typeFilter],
+  )
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      if (nextPage === page) return
+
+      setLoading(true)
+      setPage(nextPage)
+    },
+    [page],
+  )
 
   useEffect(() => {
     if (!token) return
@@ -235,6 +296,7 @@ export function PointLogsView() {
           sortBy,
           sortOrder,
           token: authToken,
+          type: hasTypeFilter ? typeFilter : undefined,
         })
         if (controller.signal.aborted) return
         const nextTotal = data.count ?? 0
@@ -259,7 +321,7 @@ export function PointLogsView() {
     void loadLogs()
 
     return () => controller.abort()
-  }, [page, reloadKey, sortBy, sortOrder, token])
+  }, [hasTypeFilter, page, reloadKey, sortBy, sortOrder, token, typeFilter])
 
   if (error) {
     return (
@@ -273,9 +335,49 @@ export function PointLogsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted">
-        共 <span className="font-medium tabular-nums text-foreground">{total}</span> 条记录
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          共 <span className="font-medium tabular-nums text-foreground">{total}</span> 条记录
+        </p>
+
+        <Select
+          aria-label="按积分日志类型筛选"
+          className="w-full sm:w-auto"
+          value={typeFilter}
+          variant="secondary"
+          onChange={handleTypeFilterChange}
+        >
+          <Label className="sr-only">积分日志类型</Label>
+          <Select.Trigger className="h-9 items-center gap-1.5 rounded-full pl-3 text-sm">
+            <Funnel
+              aria-hidden
+              className={cx(
+                'size-3.5 shrink-0 self-center',
+                hasTypeFilter ? 'text-accent' : 'text-muted',
+              )}
+            />
+            <Select.Value className="text-sm">
+              {({ defaultChildren }) => (
+                <span className="flex min-w-0 items-center gap-1 text-sm">
+                  <span className="shrink-0 text-muted">类型：</span>
+                  <span className="min-w-0 truncate">{defaultChildren}</span>
+                </span>
+              )}
+            </Select.Value>
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {POINT_LOG_TYPE_OPTIONS.map((option) => (
+                <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                  {option.label}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
 
       {shouldShowTable ? (
         <div className="relative">
@@ -283,7 +385,7 @@ export function PointLogsView() {
             aria-label="积分变动日志"
             className={cx(isLoading && rows.length > 0 && '[&_.table__body]:opacity-0')}
             columns={columns}
-            contentClassName="table-fixed"
+            contentClassName="min-w-[720px] table-fixed"
             data={rows}
             getRowId={(log) => log.id}
             renderEmptyState={() => <PointLogsTableLoadingState />}
@@ -299,9 +401,11 @@ export function PointLogsView() {
         </div>
       ) : (
         <EmptyPanel
-          description="积分收支记录会显示在这里。"
+          description={
+            hasTypeFilter ? '当前类型下的积分收支记录会显示在这里。' : '积分收支记录会显示在这里。'
+          }
           icon={ChartLine}
-          title="暂无积分日志"
+          title={hasTypeFilter ? '暂无该类型日志' : '暂无积分日志'}
         />
       )}
 
