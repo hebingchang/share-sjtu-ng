@@ -65,6 +65,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.safari-rounded-clip {
-  clip-path: inset(0 round 1.5rem);
+.soft-glow-panel {
+  background-image:
+    radial-gradient(
+      circle at calc(100% + 5rem) -4rem,
+      color-mix(in oklab, var(--accent) 14%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at -4rem calc(100% + 4rem),
+      color-mix(in oklab, var(--accent) 8%, transparent),
+      transparent 56%
+    );
 }

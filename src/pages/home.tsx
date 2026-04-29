@@ -905,16 +905,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section className="safari-rounded-clip relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-12 sm:px-10 sm:py-16">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-accent/10 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-24 -left-16 size-72 rounded-full bg-accent/[0.06] blur-3xl"
-        />
-
+      <section className="soft-glow-panel relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-12 sm:px-10 sm:py-16">
         <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-2 text-center">
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">

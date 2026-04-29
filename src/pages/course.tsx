@@ -393,16 +393,7 @@ function CourseHeader({
   taxonomy: string[]
 }) {
   return (
-    <header className="safari-rounded-clip relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-7 sm:px-8 sm:py-8">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-accent/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-24 -left-12 size-64 rounded-full bg-accent/6 blur-3xl"
-      />
-
+    <header className="soft-glow-panel relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-7 sm:px-8 sm:py-8">
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
