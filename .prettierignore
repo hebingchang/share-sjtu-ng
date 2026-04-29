@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-ssr
+coverage
+.vite
+.vercel
+.heroui-docs
+*.local

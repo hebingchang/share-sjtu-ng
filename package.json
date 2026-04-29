@@ -12,6 +12,8 @@
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "lint": "eslint .",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
     "preview": "npm run build && npm run start",
     "start": "node dist/server/index.js"
   },
@@ -51,6 +53,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "prettier": "^3.8.3",
     "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",

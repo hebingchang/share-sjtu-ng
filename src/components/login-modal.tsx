@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Envelope, Key } from '@gravity-ui/icons'
 import {
   AlertDialog,
@@ -17,9 +17,12 @@ import type { Response } from '../types/rpc'
 import { useAuth } from '../auth/use-auth'
 import {
   buildLoginOAuthUrl,
+  clearLoginOAuthCallback,
   clearLoginOAuthFlow,
   createLoginOAuthState,
   getLoginReturnTo,
+  readLoginOAuthCallback,
+  readLoginOAuthFlow,
   shouldUseCurrentPageOAuth,
   storeLoginOAuthFlow,
   type LoginOAuthFlowMode,
@@ -38,6 +41,71 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
     setAuthError(message)
     setAuthErrorOpen(true)
   }, [])
+
+  const completeJaccountLogin = useCallback(
+    async (code: string) => {
+      setAuthorizing('jaccount')
+
+      try {
+        const response = await fetch(
+          `${constants.API_URL}/auth/jaccount/authorize?` + new URLSearchParams({ code }),
+          { method: 'GET', credentials: 'include' },
+        )
+        const payload = (await response.json()) as Response<string>
+
+        if (payload?.success && payload.data) {
+          setToken(payload.data)
+        } else {
+          showAuthError(payload?.message || 'jAccount 授权没有返回有效登录信息，请稍后再试。')
+        }
+      } catch (err) {
+        console.error(err)
+        showAuthError('无法完成 jAccount 授权，请检查网络后重试。')
+      } finally {
+        setAuthorizing(null)
+      }
+    },
+    [setToken, showAuthError],
+  )
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const callback = readLoginOAuthCallback()
+    if (!callback) return
+
+    const flow = readLoginOAuthFlow()
+    clearLoginOAuthCallback()
+    clearLoginOAuthFlow()
+    const showStoredCallbackError = (message: string) => {
+      window.setTimeout(() => showAuthError(message), 0)
+    }
+
+    if (flow?.mode !== 'redirect') {
+      showStoredCallbackError('登录状态已失效，请重新登录。')
+      return
+    }
+
+    if (callback.error) {
+      showStoredCallbackError('jAccount 授权没有完成，请重新登录。')
+      return
+    }
+
+    const code = callback.code
+    if (!code) {
+      showStoredCallbackError('jAccount 没有返回授权码，请稍后再试。')
+      return
+    }
+
+    if (!callback.state || callback.state !== flow.state) {
+      showStoredCallbackError('登录状态已失效，请重新登录。')
+      return
+    }
+
+    window.setTimeout(() => {
+      void completeJaccountLogin(code)
+    }, 0)
+  }, [completeJaccountLogin, isOpen, showAuthError])
 
   const authorize = useCallback(
     async (provider: Provider) => {
@@ -150,7 +218,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
               if (r?.success && r.data) {
                 setToken(r.data)
               } else {
-                showAuthError('jAccount 授权没有返回有效登录信息，请稍后再试。')
+                showAuthError(r?.message || 'jAccount 授权没有返回有效登录信息，请稍后再试。')
               }
             })
             .catch((err) => {

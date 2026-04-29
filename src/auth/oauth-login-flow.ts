@@ -9,6 +9,15 @@ export interface LoginOAuthFlow {
   state: string
 }
 
+export interface LoginOAuthCallback {
+  code: string | null
+  createdAt: number
+  error: string | null
+  state: string | null
+}
+
+const LOGIN_OAUTH_CALLBACK_KEY = 'login_oauth_callback'
+
 export function createLoginOAuthState(): string {
   const bytes = new Uint8Array(16)
   window.crypto.getRandomValues(bytes)
@@ -73,6 +82,36 @@ export function readLoginOAuthFlow(): LoginOAuthFlow | null {
 
 export function clearLoginOAuthFlow() {
   sessionStorage.removeItem(LOGIN_OAUTH_FLOW_KEY)
+}
+
+export function storeLoginOAuthCallback(callback: LoginOAuthCallback) {
+  sessionStorage.setItem(LOGIN_OAUTH_CALLBACK_KEY, JSON.stringify(callback))
+}
+
+export function readLoginOAuthCallback(): LoginOAuthCallback | null {
+  const stored = sessionStorage.getItem(LOGIN_OAUTH_CALLBACK_KEY)
+  if (!stored) return null
+
+  try {
+    const parsed = JSON.parse(stored) as Partial<LoginOAuthCallback>
+
+    if (
+      typeof parsed.createdAt === 'number' &&
+      (typeof parsed.code === 'string' || parsed.code === null) &&
+      (typeof parsed.error === 'string' || parsed.error === null) &&
+      (typeof parsed.state === 'string' || parsed.state === null)
+    ) {
+      return parsed as LoginOAuthCallback
+    }
+  } catch {
+    // Ignore invalid state from a previous app version or interrupted flow.
+  }
+
+  return null
+}
+
+export function clearLoginOAuthCallback() {
+  sessionStorage.removeItem(LOGIN_OAUTH_CALLBACK_KEY)
 }
 
 export function sanitizeLoginReturnTo(returnTo: string | null | undefined): string {
