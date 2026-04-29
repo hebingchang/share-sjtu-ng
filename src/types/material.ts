@@ -1,4 +1,4 @@
-import type { CourseOrganization } from './course'
+import type { Course, CourseOrganization } from './course'
 
 export interface MaterialType {
   id: number
@@ -24,6 +24,7 @@ export interface ClassSummary {
 export interface MaterialClass {
   id: number
   course_id: number
+  course?: Course | null
   teacher_id?: number
   teacher?: Teacher | null
 }
@@ -34,6 +35,7 @@ export interface Material {
   blocked?: boolean | number
   class_id?: number | null
   class?: MaterialClass | null
+  course?: Course | null
   course_id?: number | null
   name: string
   description: string
@@ -103,4 +105,23 @@ export type MaterialCommentSort = 'old' | 'new' | 'like'
 export interface PaginatedComments {
   count: number
   records: MaterialComment[]
+}
+
+export interface Purchase {
+  id: number
+  created_at: string
+  updated_at: string
+  material_id: number
+  material?: Material | null
+  user_id: number
+}
+
+export interface PaginatedPurchases {
+  count: number
+  records: Purchase[]
+}
+
+export interface PaginatedMaterials {
+  count: number
+  records: Material[]
 }

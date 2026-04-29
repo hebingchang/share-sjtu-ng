@@ -15,6 +15,16 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     setOpen(true)
   }, [])
 
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen)
+      if (!nextOpen) {
+        dialog?.onClose?.()
+      }
+    },
+    [dialog],
+  )
+
   const value = useMemo<DialogContextValue>(() => ({ showDialog }), [showDialog])
   const status = dialog?.status ?? 'default'
 
@@ -23,7 +33,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       {children}
       <AlertDialog.Backdrop
         isOpen={isOpen}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
       >
         <AlertDialog.Container placement="center">
           <AlertDialog.Dialog className="sm:max-w-[420px]">

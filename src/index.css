@@ -2,11 +2,35 @@
 @import "@heroui/styles";
 @import "@heroui-pro/react/css";
 
+@font-face {
+  font-family: "ShareDigits";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/digits.woff2") format("woff2");
+}
+
 :root,
-[data-theme="light"],
-[data-theme="dark"] {
+[data-theme="light"] {
   --accent: rgb(36 93 135);
   --accent-foreground: var(--snow);
+  --focus: var(--accent);
+  --link: var(--accent);
+}
+
+.dark,
+[data-theme="dark"] {
+  --background: oklch(0.19 0.016 245);
+  --surface: oklch(0.255 0.013 245);
+  --surface-secondary: oklch(0.315 0.013 245);
+  --surface-tertiary: oklch(0.355 0.012 245);
+  --overlay: oklch(0.27 0.013 245);
+  --default: oklch(0.34 0.012 245);
+  --field-background: var(--overlay);
+  --border: oklch(0.4 0.012 245);
+  --separator: oklch(0.36 0.011 245);
+  --accent: oklch(0.74 0.105 235);
+  --accent-foreground: oklch(0.18 0.026 245);
   --focus: var(--accent);
   --link: var(--accent);
 }
@@ -34,4 +58,9 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.font-digits {
+  font-family: "ShareDigits", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
 }

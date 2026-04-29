@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { BrowserRouter, Route, Routes, useLocation, useParams } from 'react-router'
-import { useAuth } from './auth/context'
+import { useAuth } from './auth/use-auth'
 import InitialLoader from './components/initial-loader'
 import Layout from './components/layout'
 import CoursePage from './pages/course'
 import HomePage from './pages/home'
 import OAuthCallbackPage from './pages/oauth-callback'
 import SearchPage from './pages/search'
+import UserPage from './pages/user'
 
 function OAuthCallbackRoute() {
   const { channel = '' } = useParams()
@@ -17,7 +18,8 @@ function OAuthCallbackRoute() {
 function AnimatedRoutes() {
   const location = useLocation()
   const courseMatch = location.pathname.match(/^(\/course\/[^/]+)/)
-  const animationKey = courseMatch ? courseMatch[1] : location.pathname
+  const userMatch = location.pathname.match(/^\/user(?:\/|$)/)
+  const animationKey = courseMatch ? courseMatch[1] : userMatch ? '/user' : location.pathname
 
   return (
     <AnimatePresence initial={false} mode="wait">
@@ -30,6 +32,7 @@ function AnimatedRoutes() {
       >
         <Routes location={location}>
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/user/*" element={<UserPage />} />
           <Route path="/course/:id" element={<CoursePage />} />
           <Route path="/course/:id/material/:materialId" element={<CoursePage />} />
           <Route path="/course/:id/class/:classId" element={<CoursePage />} />

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   CircleDollar,
   File,
+  FilePlus,
   Funnel,
   Heart,
   Person,
@@ -31,8 +32,11 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { getCourse, getCourseMaterials } from '../api/courses'
-import { useAuth } from '../auth/context'
+import { useAuth } from '../auth/use-auth'
 import MaterialDetailModal from '../components/material-detail-modal'
+import MaterialUploadModal, {
+  type MaterialUploadInitialSelection,
+} from '../components/material-upload-modal'
 import type { Course } from '../types/course'
 import type { Material, MaterialType } from '../types/material'
 
@@ -106,9 +110,6 @@ const courseHeaderChipClassName =
 const courseHeaderMutedChipClassName =
   'border border-border/80 bg-surface/80 text-muted shadow-[0_1px_2px_rgb(0_0_0/0.03)]'
 
-const courseHeaderWarningChipClassName =
-  'border border-warning/45 bg-warning-soft shadow-[0_1px_2px_rgb(0_0_0/0.03)]'
-
 function formatDate(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
@@ -155,6 +156,9 @@ export default function CoursePage() {
   const [selectedTypeIds, setSelectedTypeIds] = useState<Key[]>([])
   const [freeOnly, setFreeOnly] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isUploadModalOpen, setUploadModalOpen] = useState(false)
+  const [uploadInitialSelection, setUploadInitialSelection] =
+    useState<MaterialUploadInitialSelection>()
 
   if (trackedId !== id) {
     setTrackedId(id)
@@ -166,6 +170,8 @@ export default function CoursePage() {
     setSelectedTypeIds([])
     setFreeOnly(false)
     setSearchQuery('')
+    setUploadModalOpen(false)
+    setUploadInitialSelection(undefined)
   }
 
   useEffect(() => {
@@ -261,6 +267,22 @@ export default function CoursePage() {
     navigate(basePath, { replace: true })
   }, [basePath, navigate])
 
+  const openUploadModal = useCallback(() => {
+    if (!course) return
+
+    setUploadInitialSelection({
+      course,
+      classId: selectedTab && !selectedTab.isUnarchived ? selectedTab.key : null,
+      teacherName: selectedTab && !selectedTab.isUnarchived ? selectedTab.label : undefined,
+    })
+    setUploadModalOpen(true)
+  }, [course, selectedTab])
+
+  const closeUploadModal = useCallback(() => {
+    setUploadModalOpen(false)
+    setUploadInitialSelection(undefined)
+  }, [])
+
   const replacementCode = course?.is_deprecated ? course.latest_course?.code : null
   const primaryCode = replacementCode ?? course?.code
   const showOldCode = !!replacementCode && course?.code && course.code !== replacementCode
@@ -293,6 +315,7 @@ export default function CoursePage() {
               primaryCode={primaryCode}
               showOldCode={!!showOldCode}
               taxonomy={taxonomy}
+              onUploadPress={openUploadModal}
             />
 
             {tabs.length > 0 ? (
@@ -344,6 +367,14 @@ export default function CoursePage() {
         materialId={materialId ?? null}
         onClose={closeMaterial}
       />
+      {token ? (
+        <MaterialUploadModal
+          initialSelection={uploadInitialSelection}
+          isOpen={isUploadModalOpen}
+          token={token}
+          onClose={closeUploadModal}
+        />
+      ) : null}
     </div>
   )
 }
@@ -353,8 +384,10 @@ function CourseHeader({
   primaryCode,
   showOldCode,
   taxonomy,
+  onUploadPress,
 }: {
   course: Course
+  onUploadPress: () => void
   primaryCode?: string
   showOldCode: boolean
   taxonomy: string[]
@@ -367,7 +400,7 @@ function CourseHeader({
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-24 -left-12 size-64 rounded-full bg-accent/[0.06] blur-3xl"
+        className="pointer-events-none absolute -bottom-24 -left-12 size-64 rounded-full bg-accent/6 blur-3xl"
       />
 
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -381,15 +414,6 @@ function CourseHeader({
             {showOldCode ? (
               <Chip className={courseHeaderMutedChipClassName} variant="soft">
                 <Chip.Label className="tabular-nums">{course.code}</Chip.Label>
-              </Chip>
-            ) : null}
-            {course.is_deprecated ? (
-              <Chip
-                className={courseHeaderWarningChipClassName}
-                color="warning"
-                variant="soft"
-              >
-                <Chip.Label>已停开</Chip.Label>
               </Chip>
             ) : null}
             {course.level ? (
@@ -429,6 +453,16 @@ function CourseHeader({
             </div>
           ) : null}
         </div>
+        <div className="flex shrink-0 self-start max-lg:w-full">
+          <Button
+            className="max-lg:w-full"
+            variant="primary"
+            onPress={onUploadPress}
+          >
+            <FilePlus className="size-4" />
+            上传资料
+          </Button>
+        </div>
       </div>
     </header>
   )
@@ -447,7 +481,7 @@ function ClassPill({
     <button
       aria-controls={`class-panel-${tab.key}`}
       aria-selected={isSelected}
-      className="group relative flex h-11 shrink-0 cursor-[var(--cursor-interactive)] items-center gap-2 rounded-full border border-default px-4 text-sm font-medium text-muted transition-colors hover:text-foreground data-[selected=true]:border-transparent data-[selected=true]:text-foreground"
+      className="group relative flex h-11 shrink-0 cursor-(--cursor-interactive) items-center gap-2 rounded-full border border-default px-4 text-sm font-medium text-muted transition-colors hover:text-foreground data-[selected=true]:border-transparent data-[selected=true]:text-foreground"
       data-selected={isSelected}
       role="tab"
       tabIndex={isSelected ? 0 : -1}
@@ -472,7 +506,7 @@ function ClassPill({
         <span
           className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] leading-none tabular-nums transition-colors ${
             isSelected
-              ? 'bg-accent/15 text-accent'
+              ? 'bg-accent-soft text-accent'
               : 'bg-default text-muted group-hover:bg-default/80'
           }`}
         >
@@ -594,7 +628,7 @@ function MoreClassesPopover({
       <Popover.Trigger>
         <button
           aria-label={`查看全部 ${classes.length} 个教学班`}
-          className="group flex h-11 shrink-0 cursor-[var(--cursor-interactive)] items-center gap-1.5 rounded-full border border-default px-4 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:text-foreground data-[pressed=true]:bg-surface-secondary"
+          className="group flex h-11 shrink-0 cursor-(--cursor-interactive) items-center gap-1.5 rounded-full border border-default px-4 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:text-foreground data-[pressed=true]:bg-surface-secondary"
           type="button"
         >
           <span className="whitespace-nowrap">更多</span>
@@ -640,7 +674,7 @@ function MoreClassesPopover({
                     <li key={tab.key}>
                       <button
                         aria-pressed={isSelected}
-                        className="group flex w-full cursor-[var(--cursor-interactive)] items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-secondary aria-pressed:bg-surface-secondary aria-pressed:shadow-surface"
+                        className="group flex w-full cursor-(--cursor-interactive) items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface-secondary aria-pressed:bg-surface-secondary aria-pressed:shadow-surface"
                         type="button"
                         onClick={() => {
                           onSelect(tab.key)
@@ -1158,7 +1192,7 @@ function MaterialCard({
   return (
     <Card
       aria-label={`查看 ${material.name || material.file_name || '资料'} 详情`}
-      className="group h-full cursor-[var(--cursor-interactive)] text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+      className="group h-full cursor-(--cursor-interactive) text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {

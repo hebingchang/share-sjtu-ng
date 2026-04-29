@@ -5,6 +5,7 @@ export type DialogStatus = 'default' | 'accent' | 'success' | 'warning' | 'dange
 export interface DialogOptions {
   title: ReactNode
   description?: ReactNode
+  onClose?: () => void
   status?: DialogStatus
 }
 

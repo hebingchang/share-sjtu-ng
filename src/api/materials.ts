@@ -5,6 +5,7 @@ import type {
   MaterialCommentReportReason,
   MaterialCommentSort,
   MaterialReportReason,
+  MaterialType,
   PaginatedComments,
 } from '../types/material'
 import type { Response } from '../types/rpc'
@@ -41,6 +42,75 @@ async function request<T>(
     throw new Error(payload.message || fallbackError)
   }
   return payload.data
+}
+
+export interface MaterialUploadTicket {
+  url: string
+  path: string
+}
+
+export interface CreateMaterialPayload {
+  class_id: number
+  course_id: number
+  description: string
+  material_type_id: number
+  name: string
+  path: string
+  points: number
+}
+
+export async function getMaterialTypes({
+  token,
+  signal,
+}: RequestOptions): Promise<MaterialType[]> {
+  return request<MaterialType[]>(
+    '/api/v1/material-type',
+    { token, signal },
+    '获取资料类型失败',
+  )
+}
+
+export async function requestMaterialUpload({
+  fileName,
+  fileSize,
+  token,
+  signal,
+}: {
+  fileName: string
+  fileSize: number
+} & RequestOptions): Promise<MaterialUploadTicket> {
+  return request<MaterialUploadTicket>(
+    '/api/v1/material/contribute/upload',
+    {
+      token,
+      signal,
+      method: 'POST',
+      body: {
+        file_name: fileName,
+        file_size: fileSize,
+      },
+    },
+    '获取上传地址失败',
+  )
+}
+
+export async function createMaterial({
+  data,
+  token,
+  signal,
+}: {
+  data: CreateMaterialPayload
+} & RequestOptions): Promise<Material> {
+  return request<Material>(
+    '/api/v1/material',
+    {
+      token,
+      signal,
+      method: 'PUT',
+      body: data,
+    },
+    '提交资料失败',
+  )
 }
 
 export async function getMaterial({

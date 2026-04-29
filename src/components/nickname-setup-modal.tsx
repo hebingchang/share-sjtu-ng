@@ -10,28 +10,48 @@ import {
   Label,
   Modal,
   TextField,
+  AlertDialog,
 } from '@heroui/react'
 import { updateUserProfile } from '../api/user'
-import { useAuth } from '../auth/context'
+import { useAuth } from '../auth/use-auth'
+import { useDialog } from '../dialog/use-dialog'
 import type { Profile } from '../types/user'
 
 const MAX_NICKNAME_LENGTH = 16
 const SITE_LAUNCH_YEAR = 2014
 
 type Step = 'form' | 'welcome'
+type NicknameModalMode = 'setup' | 'edit'
 
-export default function NicknameSetupModal({ isOpen }: { isOpen: boolean }) {
+interface NicknameSetupModalProps {
+  initialNickname?: string | null
+  isOpen: boolean
+  mode?: NicknameModalMode
+  onOpenChange?: (isOpen: boolean) => void
+}
+
+export default function NicknameSetupModal({
+  initialNickname,
+  isOpen,
+  mode = 'setup',
+  onOpenChange,
+}: NicknameSetupModalProps) {
   const { token, setProfile } = useAuth()
-  const [nickname, setNickname] = useState('')
+  const { showDialog } = useDialog()
+  const [nickname, setNickname] = useState(() => initialNickname?.trim() ?? '')
   const [error, setError] = useState<string | null>(null)
+  const [isConfirmOpen, setConfirmOpen] = useState(false)
   const [isSubmitting, setSubmitting] = useState(false)
   const [step, setStep] = useState<Step>('form')
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null)
   const [welcomeName, setWelcomeName] = useState('')
 
   const trimmed = nickname.trim()
+  const initialTrimmed = initialNickname?.trim() ?? ''
   const nicknameLength = [...trimmed].length
   const tooLong = nicknameLength > MAX_NICKNAME_LENGTH
+  const isEditMode = mode === 'edit'
+  const isUnchanged = isEditMode && trimmed === initialTrimmed
 
   const dismissWelcome = useCallback(() => {
     if (pendingProfile) setProfile(pendingProfile)
@@ -51,14 +71,27 @@ export default function NicknameSetupModal({ isOpen }: { isOpen: boolean }) {
     return () => window.clearTimeout(timer)
   }, [isOpen])
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!token || !trimmed || tooLong || isSubmitting) return
+  const saveNickname = useCallback(async () => {
+    if (!token || !trimmed || tooLong || isUnchanged || isSubmitting) return
 
     setSubmitting(true)
+    setConfirmOpen(false)
     setError(null)
     try {
       const profile = await updateUserProfile({ nickname: trimmed, token })
+
+      if (isEditMode) {
+        setProfile(profile)
+        setSubmitting(false)
+        onOpenChange?.(false)
+        showDialog({
+          description: '新的昵称已保存，会显示在资料和评论中。',
+          status: 'success',
+          title: '昵称已更新',
+        })
+        return
+      }
+
       setWelcomeName(trimmed)
       setPendingProfile(profile)
       setStep('welcome')
@@ -66,113 +99,166 @@ export default function NicknameSetupModal({ isOpen }: { isOpen: boolean }) {
       setError(err instanceof Error ? err.message : '更新昵称失败')
       setSubmitting(false)
     }
+  }, [
+    isEditMode,
+    isSubmitting,
+    isUnchanged,
+    onOpenChange,
+    setProfile,
+    showDialog,
+    token,
+    tooLong,
+    trimmed,
+  ])
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!token || !trimmed || tooLong || isUnchanged || isSubmitting) return
+
+    if (isEditMode) {
+      setConfirmOpen(true)
+      return
+    }
+
+    void saveNickname()
   }
 
   return (
-    <Modal.Backdrop
-      isOpen={isOpen}
-      isDismissable={step === 'welcome'}
-      isKeyboardDismissDisabled={step === 'form'}
-      variant="blur"
-      onOpenChange={(open) => {
-        if (!open && step === 'welcome') dismissWelcome()
-      }}
-    >
-      <Modal.Container placement="center" size="sm">
-        <Modal.Dialog className="overflow-hidden sm:max-w-md">
-          <AnimatePresence initial={false} mode="wait">
-            {step === 'form' ? (
-              <motion.div
-                key="form"
-                className="flex flex-col px-2 py-2 sm:px-6 sm:py-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, scale: 0.97, filter: 'blur(4px)' }}
-                transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-              >
-                <Modal.Header className="items-center p-0 text-center">
-                  <Modal.Icon className="bg-accent-soft text-accent-soft-foreground shadow-sm shadow-accent/10">
-                    <Person className="size-5" />
-                  </Modal.Icon>
-                  <Modal.Heading className="mt-4 text-2xl font-semibold leading-none">
-                    设置你的昵称
-                  </Modal.Heading>
-                  <p className="mx-auto mt-3 max-w-78 text-sm leading-6 text-muted">
-                    昵称会显示在资料和评论中。请谨慎选择，
-                    <span className="font-medium text-foreground">每 30 天只能修改 1 次</span>。
-                  </p>
-                </Modal.Header>
-                <Modal.Body className="mt-7 overflow-visible p-0">
-                  <Form
-                    id="nickname-setup-form"
-                    aria-label="设置昵称"
-                    className="flex min-w-0 flex-col gap-5"
-                    validationBehavior="aria"
-                    onSubmit={handleSubmit}
-                  >
-                    <TextField
-                      fullWidth
-                      isInvalid={tooLong || !!error}
-                      isRequired
-                      className="min-w-0"
-                      name="nickname"
-                      value={nickname}
-                      onChange={(value) => {
-                        setNickname(value)
-                        if (error) setError(null)
-                      }}
+    <>
+      <Modal.Backdrop
+        isOpen={isOpen}
+        isDismissable={isEditMode || step === 'welcome'}
+        isKeyboardDismissDisabled={!isEditMode && step === 'form'}
+        variant="blur"
+        onOpenChange={(open) => {
+          if (!open && step === 'welcome') dismissWelcome()
+          if (isEditMode) onOpenChange?.(open)
+        }}
+      >
+        <Modal.Container placement="center" size="sm">
+          <Modal.Dialog className="overflow-hidden sm:max-w-md">
+            {isEditMode ? <Modal.CloseTrigger /> : null}
+            <AnimatePresence initial={false} mode="wait">
+              {step === 'form' ? (
+                <motion.div
+                  key="form"
+                  className="flex flex-col px-2 py-2 sm:px-6 sm:py-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.97, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  <Modal.Header className="items-center p-0 text-center">
+                    <Modal.Icon className="bg-accent-soft text-accent-soft-foreground shadow-sm shadow-accent/10">
+                      <Person className="size-5" />
+                    </Modal.Icon>
+                    <Modal.Heading className="mt-4 text-2xl font-semibold leading-none">
+                      {isEditMode ? '修改昵称' : '设置你的昵称'}
+                    </Modal.Heading>
+                    <p className="mx-auto mt-3 max-w-78 text-sm text-muted">
+                      {isEditMode
+                        ? '新的昵称会显示在资料和评论中。保存后，'
+                        : '昵称会显示在资料和评论中。请谨慎选择，'}
+                      <span className="font-medium text-foreground">每 30 天只能修改 1 次</span>。
+                    </p>
+                  </Modal.Header>
+                  <Modal.Body className="mt-7 overflow-visible p-0">
+                    <Form
+                      id="nickname-setup-form"
+                      aria-label={isEditMode ? '修改昵称' : '设置昵称'}
+                      className="flex min-w-0 flex-col gap-5"
+                      validationBehavior="aria"
+                      onSubmit={handleSubmit}
                     >
-                      <Label className="text-sm font-medium">昵称</Label>
-                      <InputGroup fullWidth className="min-w-0" variant="secondary">
-                        <InputGroup.Input
-                          autoFocus
-                          autoComplete="nickname"
-                          className="min-w-0"
-                          maxLength={MAX_NICKNAME_LENGTH * 2}
-                          placeholder="请输入昵称"
-                        />
-                        <InputGroup.Suffix
-                          className={
-                            tooLong
-                              ? 'min-w-12 justify-end text-danger'
-                              : 'min-w-12 justify-end text-muted'
-                          }
-                        >
-                          <span className="text-xs tabular-nums">
-                            {nicknameLength}/{MAX_NICKNAME_LENGTH}
-                          </span>
-                        </InputGroup.Suffix>
-                      </InputGroup>
-                      {tooLong ? (
-                        <FieldError>昵称最多 {MAX_NICKNAME_LENGTH} 个字符。</FieldError>
-                      ) : error ? (
-                        <FieldError>{error}</FieldError>
-                      ) : (
-                        <Description>
-                          最多 {MAX_NICKNAME_LENGTH} 个字符，可包含中英文及数字。
-                        </Description>
-                      )}
-                    </TextField>
-                    <Button
-                      fullWidth
-                      className="mt-2"
-                      isDisabled={!trimmed || tooLong}
-                      isPending={isSubmitting}
-                      type="submit"
-                      variant="primary"
-                    >
-                      保存昵称
-                    </Button>
-                  </Form>
-                </Modal.Body>
-              </motion.div>
-            ) : (
-              <WelcomeStep key="welcome" name={welcomeName} onClose={dismissWelcome} />
-            )}
-          </AnimatePresence>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+                      <TextField
+                        fullWidth
+                        isInvalid={tooLong || !!error}
+                        isRequired
+                        className="min-w-0"
+                        name="nickname"
+                        value={nickname}
+                        onChange={(value) => {
+                          setNickname(value)
+                          if (error) setError(null)
+                        }}
+                      >
+                        <Label className="text-sm font-medium">昵称</Label>
+                        <InputGroup fullWidth className="min-w-0" variant="secondary">
+                          <InputGroup.Input
+                            autoFocus
+                            autoComplete="nickname"
+                            className="min-w-0"
+                            maxLength={MAX_NICKNAME_LENGTH * 2}
+                            placeholder="请输入昵称"
+                          />
+                          <InputGroup.Suffix
+                            className={
+                              tooLong
+                                ? 'min-w-12 justify-end text-danger'
+                                : 'min-w-12 justify-end text-muted'
+                            }
+                          >
+                            <span className="text-xs tabular-nums">
+                              {nicknameLength}/{MAX_NICKNAME_LENGTH}
+                            </span>
+                          </InputGroup.Suffix>
+                        </InputGroup>
+                        {tooLong ? (
+                          <FieldError>昵称最多 {MAX_NICKNAME_LENGTH} 个字符。</FieldError>
+                        ) : error ? (
+                          <FieldError>{error}</FieldError>
+                        ) : (
+                          <Description>
+                            最多 {MAX_NICKNAME_LENGTH} 个字符，可包含中英文及数字。
+                          </Description>
+                        )}
+                      </TextField>
+                      <Button
+                        fullWidth
+                        className="mt-2"
+                        isDisabled={!trimmed || tooLong || isUnchanged}
+                        isPending={isSubmitting}
+                        type="submit"
+                        variant="primary"
+                      >
+                        {isEditMode ? '保存修改' : '保存昵称'}
+                      </Button>
+                    </Form>
+                  </Modal.Body>
+                </motion.div>
+              ) : (
+                <WelcomeStep key="welcome" name={welcomeName} onClose={dismissWelcome} />
+              )}
+            </AnimatePresence>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+
+      <AlertDialog.Backdrop isOpen={isConfirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialog.Container placement="center">
+          <AlertDialog.Dialog className="sm:max-w-[420px]">
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="warning" />
+              <AlertDialog.Heading>确认修改昵称？</AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body>
+              <p className="text-sm leading-6 text-muted">
+                保存后 30 天内不能再次修改。新的昵称将显示为
+                <span className="font-medium text-foreground"> {trimmed}</span>。
+              </p>
+            </AlertDialog.Body>
+            <AlertDialog.Footer>
+              <Button slot="close" variant="tertiary">
+                取消
+              </Button>
+              <Button isPending={isSubmitting} variant="primary" onPress={() => void saveNickname()}>
+                确认保存
+              </Button>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
+    </>
   )
 }
 

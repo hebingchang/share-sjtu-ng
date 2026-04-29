@@ -1,3 +1,5 @@
+import type { Material } from './material'
+
 export interface Organization {
   id: number
   created_at: string
@@ -29,4 +31,21 @@ export interface Profile {
   organization: Organization
   role: number
   level: string
+}
+
+export interface PointLog {
+  id: number
+  created_at: string
+  updated_at: string
+  user_id: number
+  delta: number
+  message: string
+  date: string
+  material_id?: number | null
+  material?: Material | null
+}
+
+export interface PaginatedPointLogs {
+  count: number
+  records: PointLog[]
 }

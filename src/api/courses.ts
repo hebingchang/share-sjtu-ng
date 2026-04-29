@@ -1,6 +1,6 @@
 import { constants } from '../env'
 import type { Course } from '../types/course'
-import type { CourseMaterials } from '../types/material'
+import type { ClassSummary, CourseMaterials } from '../types/material'
 import type { Response } from '../types/rpc'
 
 export async function searchCourses({
@@ -21,6 +21,31 @@ export async function searchCourses({
     body: JSON.stringify({ keyword }),
     signal,
   })
+  const payload = (await response.json()) as Response<Course[]>
+
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.message || '搜索课程失败')
+  }
+
+  return payload.data
+}
+
+export async function promptCourses({
+  keyword,
+  signal,
+  token,
+}: {
+  keyword: string
+  signal?: AbortSignal
+  token: string
+}): Promise<Course[]> {
+  const response = await fetch(
+    `${constants.API_URL}/api/v1/prompt/course?${new URLSearchParams({ keyword })}`,
+    {
+      headers: { Auth: token },
+      signal,
+    },
+  )
   const payload = (await response.json()) as Response<Course[]>
 
   if (!response.ok || !payload.success) {
@@ -72,6 +97,28 @@ export async function getCourseMaterials({
 
   if (!response.ok || !payload.success) {
     throw new Error(payload.message || '获取课程资料失败')
+  }
+
+  return payload.data
+}
+
+export async function getCourseClasses({
+  id,
+  signal,
+  token,
+}: {
+  id: string | number
+  signal?: AbortSignal
+  token: string
+}): Promise<ClassSummary[]> {
+  const response = await fetch(`${constants.API_URL}/api/v1/course/get/${id}/classes`, {
+    headers: { Auth: token },
+    signal,
+  })
+  const payload = (await response.json()) as Response<ClassSummary[]>
+
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.message || '获取授课教师失败')
   }
 
   return payload.data

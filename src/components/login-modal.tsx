@@ -14,7 +14,16 @@ import jaccountIcon from '../assets/jaccount.png'
 import { constants } from '../env'
 import type { OAuthConfig } from '../types/auth'
 import type { Response } from '../types/rpc'
-import { useAuth } from '../auth/context'
+import { useAuth } from '../auth/use-auth'
+import {
+  buildLoginOAuthUrl,
+  clearLoginOAuthFlow,
+  createLoginOAuthState,
+  getLoginReturnTo,
+  shouldUseCurrentPageOAuth,
+  storeLoginOAuthFlow,
+  type LoginOAuthFlowMode,
+} from '../auth/oauth-login-flow'
 
 type Provider = 'jaccount'
 
@@ -31,85 +40,131 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
   }, [])
 
   const authorize = useCallback(
-    (provider: Provider) => {
+    async (provider: Provider) => {
       if (provider !== 'jaccount') return
 
       const base = `${window.location.protocol}//${window.location.host}`
-      const redirectUri = `${base}/auth/jaccount/callback`
+      const requestedRedirectUri = `${base}/auth/jaccount/callback`
 
       setAuthorizing(provider)
       setAuthErrorOpen(false)
       setEmailNoticeVisible(false)
-      fetch(
-        `${constants.API_URL}/auth/jaccount/config?` +
-          new URLSearchParams({ redirect_uri: redirectUri }),
-        { method: 'GET', credentials: 'include' },
-      )
-        .then((res) => res.json() as Promise<Response<OAuthConfig>>)
-        .then((res) => {
-          const config = res.data
-          const { screenHeight, screenWidth } = {
-            screenHeight: window.screen.height,
-            screenWidth: window.screen.width,
-          }
-          const width = (screenHeight / 6) * 4
-          const height = screenHeight / 2
-          const authWindow = window.open(
-            `${config.endpoint.auth_url}?` +
-              new URLSearchParams({
-                client_id: config.client_id,
-                redirect_uri: redirectUri,
-                response_type: 'code',
-                scope: config.scopes.join(' '),
-              }),
-            '_blank',
-            `width=${width},height=${height},left=${screenWidth / 2 - width / 2},top=${screenHeight / 4}`,
-          )
 
-          if (!authWindow) {
+      try {
+        const response = await fetch(
+          `${constants.API_URL}/auth/jaccount/config?` +
+            new URLSearchParams({ redirect_uri: requestedRedirectUri }),
+          { method: 'GET', credentials: 'include' },
+        )
+        const payload = (await response.json()) as Response<OAuthConfig>
+        const config = payload.data
+
+        if (!payload?.success || !config) {
+          throw new Error('Invalid jAccount OAuth config')
+        }
+
+        const redirectUri = config.redirect_uri ?? requestedRedirectUri
+        const state = createLoginOAuthState()
+        const returnTo = getLoginReturnTo()
+        const authUrl = buildLoginOAuthUrl({
+          authUrl: config.endpoint.auth_url,
+          clientId: config.client_id,
+          redirectUri,
+          scopes: config.scopes,
+          state,
+        })
+        const storeFlow = (mode: LoginOAuthFlowMode) => {
+          storeLoginOAuthFlow({ createdAt: Date.now(), mode, returnTo, state })
+        }
+        const redirectInCurrentPage = () => {
+          storeFlow('redirect')
+          window.location.assign(authUrl)
+        }
+
+        if (shouldUseCurrentPageOAuth() || typeof BroadcastChannel === 'undefined') {
+          redirectInCurrentPage()
+          return
+        }
+
+        const { screenHeight, screenWidth } = {
+          screenHeight: window.screen.height,
+          screenWidth: window.screen.width,
+        }
+        const width = (screenHeight / 6) * 4
+        const height = screenHeight / 2
+        storeFlow('popup')
+        const authWindow = window.open(
+          authUrl,
+          '_blank',
+          `width=${width},height=${height},left=${screenWidth / 2 - width / 2},top=${screenHeight / 4}`,
+        )
+
+        if (!authWindow) {
+          redirectInCurrentPage()
+          return
+        }
+
+        const bc = new BroadcastChannel('oauth_jaccount')
+        const timer = window.setInterval(() => {
+          if (authWindow.closed) {
+            window.clearInterval(timer)
+            bc.close()
+            clearLoginOAuthFlow()
             setAuthorizing(null)
-            showAuthError('浏览器阻止了登录弹窗，请允许弹窗后重试。')
+          }
+        }, 1000)
+
+        bc.onmessage = (
+          ev: MessageEvent<{ code?: string | null; error?: string | null; state?: string | null }>,
+        ) => {
+          bc.close()
+          window.clearInterval(timer)
+          authWindow.close()
+          clearLoginOAuthFlow()
+
+          if (ev.data?.error) {
+            setAuthorizing(null)
+            showAuthError('jAccount 授权没有完成，请重新登录。')
             return
           }
 
-          const bc = new BroadcastChannel('oauth_jaccount')
-          const timer = window.setInterval(() => {
-            if (authWindow.closed) {
-              window.clearInterval(timer)
-              bc.close()
-              setAuthorizing(null)
-            }
-          }, 1000)
-
-          bc.onmessage = (ev: MessageEvent<{ code?: string }>) => {
-            if (!ev.data?.code) return
-            bc.close()
-            window.clearInterval(timer)
-            fetch(
-              `${constants.API_URL}/auth/jaccount/authorize?` +
-                new URLSearchParams({ code: ev.data.code }),
-              { method: 'GET', credentials: 'include' },
-            )
-              .then((r) => r.json() as Promise<Response<string>>)
-              .then((r) => {
-                if (r?.success && r.data) {
-                  setToken(r.data)
-                } else {
-                  showAuthError('jAccount 授权没有返回有效登录信息，请稍后再试。')
-                }
-              })
-              .catch((err) => {
-                console.error(err)
-                showAuthError('无法完成 jAccount 授权，请检查网络后重试。')
-              })
-              .finally(() => setAuthorizing(null))
+          if (!ev.data?.code) {
+            setAuthorizing(null)
+            showAuthError('jAccount 没有返回授权码，请稍后再试。')
+            return
           }
-        })
-        .catch((err) => {
-          console.error(err)
-          setAuthorizing(null)
-          showAuthError('无法获取 jAccount 登录配置，请稍后再试。')
-        })
+
+          if (ev.data.state !== state) {
+            setAuthorizing(null)
+            showAuthError('登录状态已失效，请重新登录。')
+            return
+          }
+
+          fetch(
+            `${constants.API_URL}/auth/jaccount/authorize?` +
+              new URLSearchParams({ code: ev.data.code }),
+            { method: 'GET', credentials: 'include' },
+          )
+            .then((r) => r.json() as Promise<Response<string>>)
+            .then((r) => {
+              if (r?.success && r.data) {
+                setToken(r.data)
+              } else {
+                showAuthError('jAccount 授权没有返回有效登录信息，请稍后再试。')
+              }
+            })
+            .catch((err) => {
+              console.error(err)
+              showAuthError('无法完成 jAccount 授权，请检查网络后重试。')
+            })
+            .finally(() => setAuthorizing(null))
+        }
+      } catch (err) {
+        console.error(err)
+        clearLoginOAuthFlow()
+        setAuthorizing(null)
+        showAuthError('无法获取 jAccount 登录配置，请稍后再试。')
+      }
     },
     [setToken, showAuthError],
   )
@@ -188,7 +243,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                     className="text-foreground"
                     variant="secondary"
                     isPending={authorizing === 'jaccount'}
-                    onPress={() => authorize('jaccount')}
+                    onPress={() => void authorize('jaccount')}
                   >
                     <span className="inline-flex items-center justify-center gap-2 leading-none">
                       <span className="inline-flex size-5 shrink-0 items-center justify-center">

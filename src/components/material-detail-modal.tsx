@@ -23,13 +23,13 @@ import {
 import {
   AlertDialog,
   Button,
+  Card,
   Chip,
   Dropdown,
   Label,
   ListBox,
   Modal,
   Pagination,
-  Separator,
   Skeleton,
   Select,
   Spinner,
@@ -40,6 +40,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react'
@@ -58,7 +59,7 @@ import {
   reportMaterial,
   reportMaterialComment,
 } from '../api/materials'
-import { useAuth } from '../auth/context'
+import { useAuth } from '../auth/use-auth'
 import { useDialog } from '../dialog/use-dialog'
 import { constants } from '../env'
 import type {
@@ -73,6 +74,9 @@ import type { Profile } from '../types/user'
 const COMMENTS_PAGE_SIZE = 10
 const REPLIES_PAGE_SIZE = 5
 const COMMENT_MAX_LENGTH = 1000
+const COMMENT_COLLAPSED_HEIGHT = 128
+const detailSurfaceBg =
+  'bg-surface-secondary dark:bg-[color-mix(in_srgb,var(--surface-secondary)_35%,var(--background))]'
 
 const SORT_OPTIONS: { id: MaterialCommentSort; label: string }[] = [
   { id: 'old', label: '最早' },
@@ -161,10 +165,10 @@ export default function MaterialDetailModal({
         size="cover"
       >
         <Modal.Dialog
-          className="flex flex-col overflow-hidden rounded-none p-0 sm:max-w-6xl sm:rounded-3xl"
+          className={`flex flex-col overflow-hidden rounded-none border-0 p-0 shadow-2xl shadow-black/10 sm:max-w-272 sm:rounded-[1.75rem] sm:border sm:border-border/70 ${detailSurfaceBg}`}
           aria-label="资料详情"
         >
-          <Modal.CloseTrigger className="right-8 top-8" />
+          <Modal.CloseTrigger className="z-50 right-4 top-4 bg-background/80 shadow-sm ring-1 ring-border/70 backdrop-blur-md hover:bg-surface-secondary sm:right-7 sm:top-7" />
           {materialId != null ? (
             <MaterialDetailContent
               key={String(materialId)}
@@ -280,9 +284,9 @@ function MaterialDetailContent({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.22, ease: easing }}
-          className="flex flex-col gap-4 p-6 sm:p-8"
+          className={`flex flex-col gap-4 p-6 sm:p-8 ${detailSurfaceBg}`}
         >
-          <div className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
+          <div className="flex items-start gap-3 rounded-2xl border border-danger/20 bg-danger-soft/70 p-4 text-sm text-danger-soft-foreground">
             <TriangleExclamation className="mt-0.5 size-5 shrink-0" />
             <div className="flex-1">
               <p className="font-medium">加载资料失败</p>
@@ -329,101 +333,116 @@ function MaterialDetailReady({
   onPointsChange: (delta: number) => void
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.28, ease: easing }}
-      className="flex min-h-0 flex-1 flex-col"
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       <MaterialDetailHeader material={material} />
-      <Modal.Body
-        className={
-          isDesktop
-            ? 'p-0 sm:p-0'
-            : 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
-        }
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.28, ease: easing }}
+        className="flex min-h-0 flex-1 flex-col"
       >
-        {isDesktop ? (
-          <div className="grid gap-6 px-5 pb-6 pt-5 sm:px-12 sm:pb-12 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-            <div className="min-w-0">
-              <MaterialOverview material={material} />
-            </div>
-            <aside className="lg:sticky lg:top-0 lg:col-start-2 lg:row-span-2">
-              <ActionZone
-                material={material}
-                profile={profile}
-                onMaterialChange={updateMaterial}
-                onPointsChange={onPointsChange}
-              />
-            </aside>
-            <main className="flex min-w-0 flex-col gap-6 lg:col-start-1">
-              <Separator />
-              <CommentsSection materialId={materialId} layout="desktop" />
-            </main>
-          </div>
-        ) : (
-          <Tabs
-            className="flex min-h-0 flex-1 flex-col"
-            defaultSelectedKey="info"
-          >
-            <Tabs.ListContainer className="mx-4 shrink-0 px-2">
-              <Tabs.List aria-label="资料详情视图">
-                <Tabs.Tab id="info">
-                  资料信息
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-                <Tabs.Tab id="comments">
-                  评论
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              </Tabs.List>
-            </Tabs.ListContainer>
-            <Tabs.Panel
-              id="info"
-              className="flex min-h-0 flex-1 flex-col p-0"
-            >
-              <div className="flex-1 overflow-y-auto px-8 pb-5 pt-4">
+        <Modal.Body
+          className={
+            isDesktop
+              ? 'p-0 sm:p-0'
+              : 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+          }
+        >
+          {isDesktop ? (
+            <div className={`grid gap-6 px-5 pb-6 pt-5 sm:px-10 sm:pb-9 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-x-8 ${detailSurfaceBg}`}>
+              <main className="flex min-w-0 flex-col gap-5">
                 <MaterialOverview material={material} />
-              </div>
-              <div className="shrink-0 px-7 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+              <CommentsSection
+                materialId={materialId}
+                uploaderUserId={material.user_id}
+                layout="desktop"
+              />
+              </main>
+              <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2">
                 <ActionZone
-                  floating
                   material={material}
                   profile={profile}
                   onMaterialChange={updateMaterial}
                   onPointsChange={onPointsChange}
                 />
-              </div>
-            </Tabs.Panel>
-            <Tabs.Panel
-              id="comments"
-              className="flex min-h-0 flex-1 flex-col p-0"
+              </aside>
+            </div>
+          ) : (
+            <Tabs
+              className={`flex min-h-0 flex-1 flex-col ${detailSurfaceBg}`}
+              defaultSelectedKey="info"
             >
-              <CommentsSection materialId={materialId} layout="mobile" />
-            </Tabs.Panel>
-          </Tabs>
-        )}
-      </Modal.Body>
-    </motion.div>
+              <Tabs.ListContainer className="mx-4 mt-3">
+                <Tabs.List
+                  aria-label="资料详情视图"
+                  className="w-full justify-start *:h-9 *:flex-1 *:justify-center *:text-sm *:font-medium"
+                >
+                  <Tabs.Tab id="info">
+                    资料信息
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                  <Tabs.Tab id="comments">
+                    评论
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs.ListContainer>
+              <Tabs.Panel
+                id="info"
+                className="flex min-h-0 flex-1 flex-col p-0"
+              >
+                <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4 sm:px-8">
+                  <MaterialOverview material={material} />
+                </div>
+                <div className="shrink-0 border-t border-border/60 bg-background/85 px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_rgb(0_0_0/0.06)] backdrop-blur-xl sm:px-7">
+                  <ActionZone
+                    floating
+                    material={material}
+                    profile={profile}
+                    onMaterialChange={updateMaterial}
+                    onPointsChange={onPointsChange}
+                  />
+                </div>
+              </Tabs.Panel>
+              <Tabs.Panel
+                id="comments"
+                className="flex min-h-0 flex-1 flex-col p-0"
+              >
+                <CommentsSection
+                  materialId={materialId}
+                  uploaderUserId={material.user_id}
+                  layout="mobile"
+                />
+              </Tabs.Panel>
+            </Tabs>
+          )}
+        </Modal.Body>
+      </motion.div>
+    </div>
   )
 }
 
 function MaterialDetailHeader({ material }: { material: Material }) {
   const isFree = material.points === 0
+  const author = formatAuthorName(material)
+  const fileMeta = [material.file_name || '未命名文件', formatBytes(material.size)]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <Modal.Header className="mx-4 mt-4 shrink-0 border-b-0 border-default/60 px-4 pb-4 pt-5 sm:px-8 sm:pb-6 sm:pt-8 lg:border-b">
+    <Modal.Header className="shrink-0 border-b border-border/70 bg-background px-5 pb-5 pt-6 sm:px-10 sm:pb-7 sm:pt-8">
       <div className="flex min-w-0 items-start gap-3 pr-10 sm:gap-5">
         <div
           aria-hidden
-          className="hidden size-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent sm:flex sm:size-14"
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface-secondary text-muted ring-1 ring-border/60 sm:size-14"
         >
-          <FileText className="size-5 sm:size-7" />
+          <FileText className="size-6 sm:size-7" />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:gap-2.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {material.material_type?.name ? (
-              <Chip size="sm" variant="soft">
+              <Chip className="border border-border/60 bg-background/75" size="sm" variant="soft">
                 <Chip.Label>{material.material_type.name}</Chip.Label>
               </Chip>
             ) : null}
@@ -450,12 +469,18 @@ function MaterialDetailHeader({ material }: { material: Material }) {
               </Chip>
             ) : null}
           </div>
-          <Modal.Heading className="text-balance text-xl font-semibold leading-tight tracking-tight sm:text-[28px]">
+          <Modal.Heading className="text-balance text-xl font-semibold leading-tight tracking-normal sm:text-[28px]">
             {material.name || material.file_name || '未命名资料'}
           </Modal.Heading>
-          <p className="line-clamp-1 break-all text-sm text-muted">
-            {material.file_name || '未命名文件'}
-          </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5 text-muted">
+            <span className="min-w-0 max-w-full truncate break-all text-foreground/85">{fileMeta}</span>
+            <span aria-hidden className="hidden text-muted/50 sm:inline">
+              /
+            </span>
+            <span className="shrink-0 text-muted">
+              {author} 上传于 {formatDateTime(material.created_at)}
+            </span>
+          </div>
         </div>
       </div>
     </Modal.Header>
@@ -464,14 +489,28 @@ function MaterialDetailHeader({ material }: { material: Material }) {
 
 function MaterialOverview({ material }: { material: Material }) {
   const author = formatAuthorName(material)
-  const teacher = material.class?.teacher?.name
 
   return (
-    <section aria-label="资料详情" className="flex flex-col gap-5">
-      <h2 className="text-base font-semibold tracking-tight text-foreground">
-        资料信息
-      </h2>
-      <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+    <section
+      aria-label="资料详情"
+      className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5"
+    >
+      <div className="border-b border-border/60 bg-linear-to-r from-background to-surface-secondary/70 px-4 py-4 sm:px-5">
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold tracking-normal text-foreground">
+              资料信息
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-muted">
+              文件来源、上传记录与补充说明
+            </p>
+          </div>
+          <span className="hidden shrink-0 rounded-full border border-border/60 bg-background px-3 py-1 text-xs font-medium text-muted shadow-sm sm:inline-flex">
+            {material.purchase_count} 次购买
+          </span>
+        </div>
+      </div>
+      <dl className="grid gap-px bg-border/50 sm:grid-cols-2">
         <InfoRow label="文件">
           <span className="line-clamp-1 break-all" title={material.file_name || ''}>
             {material.file_name || '未命名'}
@@ -486,24 +525,15 @@ function MaterialOverview({ material }: { material: Material }) {
         <InfoRow label="上传时间">
           <span className="tabular-nums">{formatDateTime(material.created_at)}</span>
         </InfoRow>
-        {teacher ? (
-          <InfoRow label="教学班">
-            <span>{teacher} 老师</span>
-          </InfoRow>
+        {material.description ? (
+          <div className="flex min-w-0 flex-col gap-2 bg-background px-4 py-4 sm:col-span-2 sm:px-5">
+            <dt className="text-xs font-medium text-muted">上传者描述</dt>
+            <dd className="min-w-0 whitespace-pre-wrap rounded-2xl border border-border/60 bg-surface-secondary/60 px-4 py-3 text-sm leading-relaxed text-foreground">
+              {material.description}
+            </dd>
+          </div>
         ) : null}
-        <InfoRow label="购买次数">
-          <span className="tabular-nums">{material.purchase_count}</span>
-        </InfoRow>
       </dl>
-
-      {material.description ? (
-        <div className="mt-1 rounded-2xl bg-surface-secondary px-5 py-4">
-          <p className="mb-1.5 text-xs font-medium text-muted">上传者描述</p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-            {material.description}
-          </p>
-        </div>
-      ) : null}
     </section>
   )
 }
@@ -516,9 +546,11 @@ function InfoRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="min-w-0 truncate text-sm text-foreground">{children}</dd>
+    <div className="flex min-w-0 flex-col gap-1 bg-background px-4 py-3.5 sm:px-5">
+      <dt className="text-xs font-medium text-muted">{label}</dt>
+      <dd className="min-w-0 truncate text-sm font-medium text-foreground">
+        {children}
+      </dd>
     </div>
   )
 }
@@ -646,23 +678,6 @@ function ActionZone({
     : material.points === 0
     ? '该资料免费分享，兑换后即可下载。'
     : '购买后即可下载。在购买后如无特殊情况积分不予退还。'
-  const statusIcon = isMine ? (
-    <Person className="size-4" />
-  ) : purchased ? (
-    <ArrowDownToLine className="size-4" />
-  ) : (
-    <ShoppingCart className="size-4" />
-  )
-  const statusTone: 'accent' | 'success' | 'muted' = isMine
-    ? 'accent'
-    : purchased
-    ? 'success'
-    : 'muted'
-  const statusToneClass = {
-    accent: 'bg-accent-soft text-accent',
-    success: 'bg-success/12 text-success',
-    muted: 'bg-surface-secondary text-muted',
-  }[statusTone]
   const ratingUnavailableTitle = isMine ? '自己的上传不可评价' : '购买后可评价'
   const statusKey = isMine
     ? 'mine'
@@ -672,198 +687,159 @@ function ActionZone({
     ? 'free'
     : 'buy'
   const actionKey = isMine || purchased ? 'download' : 'purchase'
+  const statusIcon = isMine ? (
+    <Person className="size-5" />
+  ) : purchased ? (
+    <ArrowDownToLine className="size-5" />
+  ) : material.points === 0 ? (
+    <Sparkles className="size-5" />
+  ) : (
+    <CircleDollar className="size-5" />
+  )
 
-  return (
-    <section
-      aria-label="购买与下载"
-      className={
-        floating
-          ? 'mx-auto flex w-full max-w-3xl flex-col gap-2.5'
-          : 'flex flex-col gap-4 rounded-3xl border border-default/60 bg-surface p-5 sm:p-6'
-      }
-    >
-      {floating ? null : (
-        <AnimatePresence initial={false} mode="wait">
-          <motion.div
-            key={statusKey}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.22, ease: easing }}
-            className="flex items-start gap-3"
-          >
-            <motion.div
-              aria-hidden
-              className={`flex size-10 shrink-0 items-center justify-center rounded-2xl ${statusToneClass}`}
-              initial={{ scale: 0.85 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.22, ease: easing }}
-            >
-              {statusIcon}
-            </motion.div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <h3 className="text-base font-semibold leading-tight text-foreground">
-                {heading}
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
+  const pointsInfo =
+    !isMine && !purchased && material.points > 0 ? (
+      <AnimatePresence initial={false}>
+        <motion.div
+          key="points-info"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.24, ease: easing }}
+          className="overflow-hidden"
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col rounded-xl bg-warning-soft px-3.5 py-2 text-warning-soft-foreground">
+              <span className="text-xs font-medium opacity-80">需要积分</span>
+              <span className="mt-0.5 text-lg font-semibold leading-tight tabular-nums">
+                {material.points}
+              </span>
             </div>
-          </motion.div>
-        </AnimatePresence>
+            <div className="flex flex-col items-start rounded-xl bg-surface-secondary px-3.5 py-2">
+              <span className="text-xs font-medium text-muted">当前积分</span>
+              <span className="mt-0.5 text-lg font-semibold leading-tight text-foreground">
+                <AnimatedNumber value={userPoints} />
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    ) : null
+
+  const actionButton = (
+    <AnimatePresence initial={false} mode="wait">
+      {actionKey === 'download' ? (
+        <motion.div
+          key="download"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22, ease: easing }}
+        >
+          <Button
+            className="h-11 w-full justify-center text-sm font-semibold shadow-md shadow-accent/15"
+            isPending={isDownloading}
+            variant="primary"
+            onPress={handleDownload}
+          >
+            <ArrowDownToLine className="size-4" />
+            下载文件
+          </Button>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="purchase"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22, ease: easing }}
+        >
+          <Button
+            className="h-11 w-full justify-center text-sm font-semibold shadow-md shadow-accent/15"
+            isDisabled={insufficient}
+            variant="primary"
+            onPress={() => setPurchaseConfirmOpen(true)}
+          >
+            <ShoppingCart className="size-4" />
+            {material.points === 0 ? '免费兑换' : `购买 · ${material.points} 积分`}
+          </Button>
+        </motion.div>
       )}
+    </AnimatePresence>
+  )
 
-      <AnimatePresence initial={false}>
-        {!floating && !isMine && !purchased && material.points > 0 ? (
-          <motion.div
-            key="points-info"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: easing }}
-            className="overflow-hidden"
-          >
-            <div
-              className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ${
-                floating ? 'bg-surface/75' : 'bg-surface-secondary'
-              }`}
-            >
-              <div className="flex flex-col">
-                <span className="text-xs text-muted">需要积分</span>
-                <span className="text-lg font-semibold leading-tight tabular-nums text-foreground">
-                  {material.points}
-                </span>
-              </div>
-              <Separator orientation="vertical" className="h-8" />
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-muted">您的积分</span>
-                <span
-                  className={`text-lg font-semibold leading-tight ${
-                    insufficient ? 'text-danger' : 'text-foreground'
-                  }`}
-                >
-                  <AnimatedNumber value={userPoints} />
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+  const insufficientWarning = (
+    <AnimatePresence initial={false}>
+      {insufficient ? (
+        <motion.p
+          key="insufficient"
+          initial={{ opacity: 0, height: 0, y: -4 }}
+          animate={{ opacity: 1, height: 'auto', y: 0 }}
+          exit={{ opacity: 0, height: 0, y: -4 }}
+          transition={{ duration: 0.22, ease: easing }}
+          className="-mt-1 flex items-start gap-1.5 overflow-hidden rounded-xl bg-warning-soft/70 px-3 py-2 text-xs leading-relaxed text-warning-soft-foreground"
+        >
+          <CircleExclamation className="mt-0.5 size-3.5 shrink-0" />
+          积分不足，还差 {material.points - userPoints} 积分。可通过分享资料或参与活动获取积分。
+        </motion.p>
+      ) : null}
+    </AnimatePresence>
+  )
 
-      <AnimatePresence initial={false} mode="wait">
-        {actionKey === 'download' ? (
-          <motion.div
-            key="download"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.22, ease: easing }}
-          >
-            <Button
-              className="w-full justify-center"
-              isPending={isDownloading}
-              variant="primary"
-              onPress={handleDownload}
-            >
-              <ArrowDownToLine className="size-4" />
-              下载文件
-            </Button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="purchase"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.22, ease: easing }}
-          >
-            <Button
-              className="w-full justify-center"
-              isDisabled={insufficient}
-              variant="primary"
-              onPress={() => setPurchaseConfirmOpen(true)}
-            >
-              <ShoppingCart className="size-4" />
-              {material.points === 0 ? '免费兑换' : `购买 · ${material.points} 积分`}
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {insufficient ? (
-          <motion.p
-            key="insufficient"
-            initial={{ opacity: 0, height: 0, y: -4 }}
-            animate={{ opacity: 1, height: 'auto', y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -4 }}
-            transition={{ duration: 0.22, ease: easing }}
-            className="-mt-1 flex items-start gap-1.5 overflow-hidden px-1 text-xs leading-relaxed text-danger"
-          >
-            <CircleExclamation className="mt-0.5 size-3.5 shrink-0" />
-            积分不足，还差 {material.points - userPoints} 积分。可通过分享资料或参与活动获取积分。
-          </motion.p>
-        ) : null}
-      </AnimatePresence>
-
+  const actionRowButtons = (
+    <>
+      <Button
+        aria-label="投诉资料"
+        className="h-8 justify-center rounded-full px-3 text-xs text-muted shadow-none hover:text-foreground"
+        size="sm"
+        variant="ghost"
+        onPress={() => setReportOpen(true)}
+      >
+        <Flag className="size-3.5" />
+        投诉
+      </Button>
       <div
-        className={
-          floating
-            ? 'flex w-full items-center justify-between gap-3 pt-0.5'
-            : '-mb-1 flex items-center justify-between gap-3 pt-1'
-        }
+        className="flex items-center gap-1.5"
+        title={canRate ? undefined : ratingUnavailableTitle}
       >
         <Button
-          aria-label="投诉资料"
-          className="h-8 justify-center rounded-full px-3 text-xs shadow-none text-muted"
+          aria-label={material.has_liked ? '取消点赞' : '点赞'}
+          className="h-8 min-w-16 justify-center rounded-full px-3 text-xs text-muted shadow-none hover:text-foreground aria-disabled:text-muted/50"
+          isDisabled={!canRate}
+          isPending={isRating === 'like'}
           size="sm"
           variant="ghost"
-          onPress={() => setReportOpen(true)}
+          onPress={() => handleRate('like')}
         >
-          <Flag className="size-3.5" />
-          投诉
+          <AnimatedToggle
+            active={material.has_liked === true}
+            on={<ThumbsUpFill className="size-3.5 text-current" />}
+            off={<ThumbsUp className="size-3.5" />}
+          />
+          <AnimatedNumber value={material.like_count} />
         </Button>
-        <div
-          className="flex items-center gap-1.5"
-          title={canRate ? undefined : ratingUnavailableTitle}
+        <Button
+          aria-label={material.has_hated ? '取消点踩' : '点踩'}
+          className="h-8 min-w-16 justify-center rounded-full px-3 text-xs text-muted shadow-none hover:text-foreground aria-disabled:text-muted/50"
+          isDisabled={!canRate}
+          isPending={isRating === 'hate'}
+          size="sm"
+          variant="ghost"
+          onPress={() => handleRate('hate')}
         >
-          <Button
-            aria-label={material.has_liked ? '取消点赞' : '点赞'}
-            className={`h-8 min-w-16 justify-center rounded-full px-3 text-xs shadow-none transition-colors ${
-              material.has_liked ? 'bg-accent-soft/70 text-accent' : 'text-muted'
-            }`}
-            isDisabled={!canRate}
-            isPending={isRating === 'like'}
-            size="sm"
-            variant="ghost"
-            onPress={() => handleRate('like')}
-          >
-            <AnimatedToggle
-              active={material.has_liked === true}
-              on={<ThumbsUpFill className="size-3.5 text-current" />}
-              off={<ThumbsUp className="size-3.5" />}
-            />
-            <AnimatedNumber value={material.like_count} />
-          </Button>
-          <Button
-            aria-label={material.has_hated ? '取消点踩' : '点踩'}
-            className={`h-8 min-w-16 justify-center rounded-full px-3 text-xs shadow-none transition-colors ${
-              material.has_hated ? 'bg-danger/10 text-danger' : 'text-muted'
-            }`}
-            isDisabled={!canRate}
-            isPending={isRating === 'hate'}
-            size="sm"
-            variant="ghost"
-            onPress={() => handleRate('hate')}
-          >
-            <AnimatedToggle
-              active={material.has_hated === true}
-              on={<ThumbsDownFill className="size-3.5 text-current" />}
-              off={<ThumbsDown className="size-3.5" />}
-            />
-            <AnimatedNumber value={material.hate_count} />
-          </Button>
-        </div>
+          <AnimatedToggle
+            active={material.has_hated === true}
+            on={<ThumbsDownFill className="size-3.5 text-current" />}
+            off={<ThumbsDown className="size-3.5" />}
+          />
+          <AnimatedNumber value={material.hate_count} />
+        </Button>
       </div>
+    </>
+  )
 
+  const dialogs = (
+    <>
       <MaterialReportDialog
         isOpen={isReportOpen}
         materialId={material.id}
@@ -883,14 +859,14 @@ function ActionZone({
               </AlertDialog.Heading>
             </AlertDialog.Header>
             <AlertDialog.Body>
-              <p className="text-sm leading-6 text-foreground">
+              <p className="text-sm leading-6">
                 {material.points === 0
                   ? '该资料无需积分，兑换后即可下载。'
                   : `本次购买将扣除 ${material.points} 积分（购买后剩余 ${
                       userPoints - material.points
                     } 积分）。`}
               </p>
-              <p className="mt-2 text-xs leading-5 text-muted">
+              <p className="mt-2 text-xs leading-5">
                 购买后您即可下载并对资料进行评价。
               </p>
             </AlertDialog.Body>
@@ -909,7 +885,67 @@ function ActionZone({
           </AlertDialog.Dialog>
         </AlertDialog.Container>
       </AlertDialog.Backdrop>
-    </section>
+    </>
+  )
+
+  if (floating) {
+    return (
+      <section
+        aria-label="购买与下载"
+        className="mx-auto flex w-full max-w-3xl flex-col gap-2.5"
+      >
+        {pointsInfo}
+        {actionButton}
+        {insufficientWarning}
+        <div className="flex w-full items-center justify-between gap-3 pt-0.5">
+          {actionRowButtons}
+        </div>
+        {dialogs}
+      </section>
+    )
+  }
+
+  return (
+    <Card
+      aria-label="购买与下载"
+      className="overflow-hidden border border-border/70 bg-background p-0 shadow-sm shadow-black/5"
+      role="region"
+      variant="secondary"
+    >
+      <Card.Header className="border-b border-border/60 bg-linear-to-br from-accent-soft/80 via-background to-surface-secondary px-5 pb-4 pt-5">
+        <AnimatePresence initial={false} mode="wait">
+          <motion.div
+            key={statusKey}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22, ease: easing }}
+            className="flex min-w-0 gap-3"
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-background text-accent shadow-sm ring-1 ring-accent/10">
+              {statusIcon}
+            </div>
+            <div className="min-w-0">
+              <Card.Title className="text-base font-semibold leading-tight tracking-normal text-foreground">
+                {heading}
+              </Card.Title>
+              <Card.Description className="mt-1 line-clamp-3 leading-relaxed text-muted">
+                {description}
+              </Card.Description>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </Card.Header>
+      <Card.Content className="gap-3 bg-background px-5 py-1">
+        {pointsInfo}
+        {actionButton}
+        {insufficientWarning}
+      </Card.Content>
+      <Card.Footer className="justify-between border-t border-border/60 bg-surface-secondary/55 px-3 py-2">
+        {actionRowButtons}
+      </Card.Footer>
+      {dialogs}
+    </Card>
   )
 }
 
@@ -1001,7 +1037,7 @@ function MaterialReportDialog({
           </AlertDialog.Header>
           <AlertDialog.Body className="overflow-visible">
             {isLoadingReasons ? (
-              <div className="flex items-center gap-2 text-sm text-muted">
+              <div className="flex items-center gap-2 text-sm">
                 <Spinner size="sm" /> 加载中…
               </div>
             ) : (
@@ -1079,9 +1115,11 @@ interface ReplyTarget {
 
 function CommentsSection({
   materialId,
+  uploaderUserId,
   layout = 'desktop',
 }: {
   materialId: string | number
+  uploaderUserId: number
   layout?: 'desktop' | 'mobile'
 }) {
   const { token, profile } = useAuth()
@@ -1257,7 +1295,12 @@ function CommentsSection({
 
   const sortDropdown = (
     <Dropdown>
-      <Button aria-label="评论排序" size="sm" variant="ghost">
+      <Button
+        aria-label="评论排序"
+        className="h-8 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-muted shadow-sm hover:text-foreground"
+        size="sm"
+        variant="ghost"
+      >
         {SORT_OPTIONS.find((o) => o.id === sort)?.label ?? '排序'}
         <ChevronDown className="size-3.5" />
       </Button>
@@ -1301,11 +1344,13 @@ function CommentsSection({
   )
 
   const headerRow = (
-    <div className="flex items-center justify-between gap-3">
-      <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground sm:text-base">
-        <Comments className="size-4" />
-        评论
-        <span className="inline-flex h-6 items-center justify-center rounded-full bg-default px-2 text-xs font-medium leading-none text-muted">
+    <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-linear-to-r from-background to-surface-secondary/70 px-4 py-3 sm:px-5">
+      <h2 className="flex items-center gap-2 text-sm font-semibold tracking-normal text-foreground sm:text-base">
+        <span className="flex size-8 items-center justify-center rounded-xl bg-accent-soft text-accent">
+          <Comments className="size-4" />
+        </span>
+        评论区
+        <span className="inline-flex h-6 items-center justify-center rounded-full border border-border/60 bg-background px-2 text-xs font-medium leading-none text-muted shadow-sm">
           <AnimatedNumber value={total} />
         </span>
       </h2>
@@ -1330,7 +1375,7 @@ function CommentsSection({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.2, ease: easing }}
-          className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger"
+          className="flex items-start gap-3 rounded-2xl border border-danger/20 bg-danger-soft/70 p-4 text-sm text-danger-soft-foreground"
         >
           <TriangleExclamation className="mt-0.5 size-4 shrink-0" />
           <span>{error}</span>
@@ -1379,6 +1424,7 @@ function CommentsSection({
                   comment={comment}
                   materialId={materialId}
                   sort={sort}
+                  uploaderUserId={uploaderUserId}
                   onCommentElement={registerCommentElement}
                   onPatch={handleCommentRatingChange}
                   onRepliesLoaded={handleRepliesLoaded}
@@ -1398,11 +1444,8 @@ function CommentsSection({
       <Pagination className="flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <Pagination.Summary>
           <span className="tabular-nums">
-            第 {page} / {totalPages} 页
+            第 {page} / {totalPages} 页 · 共 {total} 条
           </span>
-          <span className="text-muted"> · 共 </span>
-          <span className="tabular-nums">{total}</span>
-          <span className="text-muted"> 条</span>
         </Pagination.Summary>
         <Pagination.Content>
           <Pagination.Item>
@@ -1433,11 +1476,13 @@ function CommentsSection({
         aria-label="评论区"
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-default/60 px-4 py-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
-            <Comments className="size-4" />
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-md">
+          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-normal text-foreground">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-accent-soft text-accent">
+              <Comments className="size-4" />
+            </span>
             评论
-            <span className="rounded-full bg-default px-2 py-0.5 text-xs font-medium tabular-nums text-muted">
+            <span className="rounded-full border border-border/60 bg-surface-secondary px-2 py-0.5 text-xs font-medium tabular-nums text-muted">
               {total}
             </span>
           </h2>
@@ -1455,11 +1500,16 @@ function CommentsSection({
   }
 
   return (
-    <section aria-label="评论区" className="flex flex-col gap-4">
+    <section
+      aria-label="评论区"
+      className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5"
+    >
       {headerRow}
-      {listSection}
-      {pagination}
-      <div className="sticky bottom-4 z-10">{commentInput}</div>
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        {commentInput}
+        {listSection}
+        {pagination}
+      </div>
     </section>
   )
 }
@@ -1504,7 +1554,7 @@ function CommentInput({
   if (floating) {
     return (
       <div className="pointer-events-auto">
-        <div className="flex min-h-12 items-end gap-2 rounded-[1.35rem] border border-default/70 bg-background/95 px-3 py-2 shadow-[0_12px_36px_rgb(0_0_0/0.16)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] focus-within:border-accent/45 focus-within:bg-background focus-within:shadow-[0_12px_36px_rgb(0_0_0/0.18),0_0_0_3px_rgb(36_93_135/0.12)]">
+        <div className="flex min-h-12 items-end gap-2 rounded-[1.35rem] border border-border/70 bg-background/90 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,border-color,box-shadow]">
           <div className="flex min-w-0 flex-1 flex-col justify-center py-0.5">
             <AnimatePresence initial={false}>
               {replyTarget ? (
@@ -1521,14 +1571,14 @@ function CommentInput({
                   transition={{ duration: 0.22, ease: easing }}
                   className="overflow-hidden"
                 >
-                  <div className="flex h-6 items-center justify-between gap-2 rounded-full bg-accent-soft/45 px-2.5 text-xs text-accent">
+                  <div className="flex h-6 items-center justify-between gap-2 rounded-full bg-accent-soft px-2.5 text-xs text-accent">
                     <span className="flex min-w-0 items-center gap-1.5">
                       <Person className="size-3.5 shrink-0" />
                       <span className="truncate">回复 @{replyTarget.nickname}</span>
                     </span>
                     <button
                       aria-label="取消回复"
-                      className="-mr-1 flex size-5 shrink-0 cursor-(--cursor-interactive) items-center justify-center rounded-full text-accent/70 hover:text-accent"
+                      className="-mr-1 flex size-5 shrink-0 cursor-(--cursor-interactive) items-center justify-center rounded-full hover:bg-accent/10"
                       onClick={onCancelReply}
                       type="button"
                     >
@@ -1540,7 +1590,7 @@ function CommentInput({
             </AnimatePresence>
             <TextArea
               aria-label="评论输入框"
-              className="max-h-28 min-h-8 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-6 shadow-none outline-none placeholder:text-muted/70 focus:bg-transparent focus:ring-0 data-[focused=true]:bg-transparent data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0"
+              className="max-h-28 min-h-8 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0"
               maxLength={COMMENT_MAX_LENGTH + 50}
               placeholder={placeholder}
               ref={inputRef}
@@ -1565,9 +1615,7 @@ function CommentInput({
                 exit={{ opacity: 0, scale: 0.7 }}
                 transition={{ duration: 0.18, ease: easing }}
                 className={`shrink-0 self-center rounded-full px-1.5 text-[10px] leading-5 tabular-nums ${
-                  overLimit
-                    ? 'bg-danger/10 text-danger'
-                    : 'bg-warning/10 text-warning'
+                  overLimit ? 'bg-danger-soft text-danger-soft-foreground' : 'bg-surface-secondary text-muted'
                 }`}
               >
                 {remaining}
@@ -1592,8 +1640,8 @@ function CommentInput({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-default/60 bg-background shadow-[0_10px_30px_rgb(0_0_0/0.07)] transition-[border-color,box-shadow] focus-within:border-accent/45 focus-within:shadow-[0_12px_32px_rgb(36_93_135/0.10)]">
-      <div className="px-4 pb-3 pt-4 sm:px-5">
+    <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-background shadow-sm transition-[border-color,box-shadow] focus-within:border-accent/35 focus-within:shadow-md focus-within:shadow-accent/5">
+      <div>
         <AnimatePresence initial={false}>
           {replyTarget ? (
             <motion.div
@@ -1604,14 +1652,14 @@ function CommentInput({
               transition={{ duration: 0.22, ease: easing }}
               className="overflow-hidden"
             >
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-accent-soft/40 px-3 py-1.5 text-xs text-accent">
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-accent-soft px-3 py-1.5 text-xs text-accent">
                 <span className="flex items-center gap-1.5">
                   <Person className="size-3.5" />
                   正在回复 @{replyTarget.nickname}
                 </span>
                 <button
                   aria-label="取消回复"
-                  className="cursor-(--cursor-interactive) rounded-full p-0.5 text-accent/70 hover:text-accent"
+                  className="cursor-(--cursor-interactive) rounded-full p-0.5 hover:bg-accent/10"
                   onClick={onCancelReply}
                   type="button"
                 >
@@ -1624,11 +1672,11 @@ function CommentInput({
 
         <TextArea
           aria-label="评论输入框"
-          className="max-h-44 min-h-22 w-full resize-none border-0 bg-transparent px-0.5 py-0 text-sm leading-6 shadow-none outline-none focus:bg-transparent focus:ring-0 data-[focused=true]:bg-transparent data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0"
+          className="max-h-36 min-h-18 w-full resize-none border-0 bg-transparent px-4 pb-3 pt-4 sm:px-5 text-sm leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0"
           maxLength={COMMENT_MAX_LENGTH + 50}
           placeholder={placeholder}
           ref={inputRef}
-          rows={3}
+          rows={2}
           value={content}
           variant="secondary"
           onChange={(e) => onChange(e.target.value)}
@@ -1641,16 +1689,16 @@ function CommentInput({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-default/40 bg-surface-secondary/40 px-4 py-2 text-xs sm:px-5 sm:py-2.5">
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-surface-secondary/55 px-4 py-2 text-xs sm:px-5 sm:py-2.5">
         <span
           className={`tabular-nums ${
-            overLimit ? 'text-danger' : remaining < 100 ? 'text-warning' : 'text-muted'
+            overLimit ? 'text-danger' : 'text-muted'
           }`}
         >
           {content.length} / {COMMENT_MAX_LENGTH}
         </span>
-        <div className="flex items-center gap-2.5">
-          <span className="hidden text-muted sm:inline">
+        <div className="flex items-center gap-2.5 text-muted">
+          <span className="hidden sm:inline">
             ⌘/Ctrl + Enter 发送
           </span>
           <Button
@@ -1673,6 +1721,7 @@ function CommentItem({
   comment,
   materialId,
   sort,
+  uploaderUserId,
   onCommentElement,
   onPatch,
   onRepliesLoaded,
@@ -1682,6 +1731,7 @@ function CommentItem({
   comment: MaterialComment
   materialId: string | number
   sort: MaterialCommentSort
+  uploaderUserId: number
   onCommentElement: (commentId: number, element: HTMLElement | null) => void
   onPatch: (commentId: number, patch: Partial<MaterialComment>) => void
   onRepliesLoaded: (rootId: number, replies: MaterialComment[]) => void
@@ -1739,8 +1789,8 @@ function CommentItem({
 
   if (isCollapsed) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-2xl border border-dashed border-default bg-surface px-4 py-3 text-xs text-muted">
-        <span className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-2 rounded-2xl border border-dashed border-warning/35 bg-warning-soft/50 px-4 py-3 text-xs text-warning-soft-foreground">
+        <span className="flex items-center gap-1.5 font-medium">
           <CircleExclamation className="size-3.5" />
           该评论因举报较多被折叠
         </span>
@@ -1752,16 +1802,17 @@ function CommentItem({
   }
 
   return (
-    <article className="flex flex-col gap-2.5 rounded-xl border border-default bg-surface p-3 sm:gap-3 sm:rounded-2xl sm:p-4">
+    <article className="flex flex-col gap-2.5 rounded-xl border border-border/70 bg-background p-3 sm:gap-3 sm:rounded-2xl sm:p-4">
       <CommentBody
         comment={comment}
+        uploaderUserId={uploaderUserId}
         onPatch={onPatch}
         onStartReply={onStartReply}
         onDeleted={onDeleted}
       />
 
       {visibleReplies.length > 0 ? (
-        <div className="ml-6 flex flex-col gap-2.5 border-l border-default/70 pl-3 sm:ml-10 sm:gap-3 sm:border-l-2 sm:pl-4">
+        <div className="ml-6 flex flex-col gap-2.5 border-l border-accent/20 pl-3 sm:ml-10 sm:gap-3 sm:border-l-2 sm:pl-4">
           <AnimatePresence initial={false}>
             {visibleReplies.map((reply) => (
               <motion.div
@@ -1776,6 +1827,7 @@ function CommentItem({
                   comment={reply}
                   isReply
                   rootId={comment.id}
+                  uploaderUserId={uploaderUserId}
                   onPatch={onPatch}
                   onStartReply={onStartReply}
                   onDeleted={onDeleted}
@@ -1788,7 +1840,7 @@ function CommentItem({
 
       {hasMoreReplies ? (
         <Button
-          className="ml-6 w-fit sm:ml-10"
+          className="ml-6 w-fit rounded-full text-muted hover:text-foreground sm:ml-10"
           isPending={isLoadingReplies}
           size="sm"
           variant="ghost"
@@ -1804,10 +1856,109 @@ function CommentItem({
   )
 }
 
+function ExpandableCommentText({
+  children,
+  isDeleted,
+}: {
+  children: string
+  isDeleted: boolean
+}) {
+  const textRef = useRef<HTMLParagraphElement | null>(null)
+  const [isExpanded, setExpanded] = useState(false)
+  const [canExpand, setCanExpand] = useState(false)
+  const [contentHeight, setContentHeight] = useState(0)
+  const [trackedChildren, setTrackedChildren] = useState(children)
+
+  if (trackedChildren !== children) {
+    setTrackedChildren(children)
+    if (isExpanded) setExpanded(false)
+    if (canExpand) setCanExpand(false)
+    if (contentHeight !== 0) setContentHeight(0)
+  }
+
+  useLayoutEffect(() => {
+    const element = textRef.current
+    if (!element) return
+
+    const measure = () => {
+      const nextHeight = element.scrollHeight
+      const nextCanExpand = element.scrollHeight > COMMENT_COLLAPSED_HEIGHT + 1
+      setContentHeight(nextHeight)
+      setCanExpand(nextCanExpand)
+      if (!nextCanExpand) setExpanded(false)
+    }
+
+    measure()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [children])
+
+  return (
+    <div className="flex min-w-0 flex-col items-start">
+      <motion.div
+        animate={{
+          maxHeight:
+            canExpand && !isExpanded
+              ? COMMENT_COLLAPSED_HEIGHT
+              : contentHeight || COMMENT_COLLAPSED_HEIGHT,
+        }}
+        className="relative min-w-0 max-w-full overflow-hidden"
+        initial={false}
+        transition={{ duration: 0.24, ease: easing }}
+      >
+        <p
+          ref={textRef}
+          className={`whitespace-pre-wrap wrap-break-word text-sm leading-5 sm:leading-6 ${
+            isDeleted ? 'text-muted' : 'text-foreground/90'
+          }`}
+        >
+          {children}
+        </p>
+        <AnimatePresence initial={false}>
+          {canExpand && !isExpanded ? (
+            <motion.div
+              aria-hidden
+              animate={{ opacity: 1 }}
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-b from-transparent to-background"
+              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: easing }}
+            />
+          ) : null}
+        </AnimatePresence>
+      </motion.div>
+      {canExpand ? (
+        <Button
+          aria-expanded={isExpanded}
+          className="-ml-2 mt-1 h-7 rounded-full px-2 text-xs text-muted hover:text-foreground"
+          size="sm"
+          variant="ghost"
+          onPress={() => setExpanded((expanded) => !expanded)}
+        >
+          <ChevronDown
+            className={`size-3.5 transition-transform ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+          />
+          {isExpanded ? '收起' : '展开'}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
 function CommentBody({
   comment,
   isReply = false,
   rootId,
+  uploaderUserId,
   onPatch,
   onStartReply,
   onDeleted,
@@ -1815,6 +1966,7 @@ function CommentBody({
   comment: MaterialComment
   isReply?: boolean
   rootId?: number
+  uploaderUserId: number
   onPatch: (commentId: number, patch: Partial<MaterialComment>) => void
   onStartReply: (target: ReplyTarget) => void
   onDeleted: (comment: MaterialComment) => void
@@ -1824,6 +1976,7 @@ function CommentBody({
   const [isRating, setRating] = useState<'like' | 'hate' | null>(null)
   const isDeleted = comment.is_deleted === true
   const isOwnComment = profile?.id === comment.user_id
+  const isUploaderComment = comment.user_id === uploaderUserId
   const hasLikeCount = comment.like_count > 0
   const hasHateCount = comment.hate_count > 0
   const shouldShowReplyTarget =
@@ -1905,24 +2058,32 @@ function CommentBody({
         <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+              <span className="min-w-0 truncate text-sm font-semibold text-foreground">
                 {isDeleted ? '已删除' : comment.author_nickname || '匿名用户'}
               </span>
-              {!isDeleted && comment.author_has_purchased ? (
+              {!isDeleted && isUploaderComment ? (
                 <Chip
-                  className="h-5 shrink-0 gap-1 px-1.5"
+                  className="h-5 shrink-0 px-1.5"
+                  color="accent"
+                  size="sm"
+                  variant="soft"
+                >
+                  <Chip.Label className="text-[11px]">上传者</Chip.Label>
+                </Chip>
+              ) : !isDeleted && comment.author_has_purchased ? (
+                <Chip
+                  className="h-5 shrink-0 px-1.5"
                   color="success"
                   size="sm"
                   variant="soft"
                 >
-                  <ShoppingCart className="size-3" />
                   <Chip.Label className="text-[11px]">已购买</Chip.Label>
                 </Chip>
               ) : null}
             </div>
             {shouldShowReplyTarget ? (
               <span className="min-w-0 truncate text-xs text-muted">
-                回复 <span className="text-foreground">@{comment.reply_to_user_nickname}</span>
+                回复 <span className="text-accent">@{comment.reply_to_user_nickname}</span>
               </span>
             ) : null}
           </div>
@@ -1930,18 +2091,14 @@ function CommentBody({
             {formatDateTime(comment.created_at)}
           </span>
         </div>
-        <p
-          className={`whitespace-pre-wrap wrap-break-word text-sm leading-5 sm:leading-6 ${
-            isDeleted ? 'text-muted' : 'text-foreground'
-          }`}
-        >
+        <ExpandableCommentText isDeleted={isDeleted}>
           {isDeleted ? '这条评论已被作者删除' : comment.content}
-        </p>
+        </ExpandableCommentText>
         {!isDeleted ? (
-          <div className="-ml-1 mt-0.5 flex items-center gap-0.5 text-xs">
+          <div className="-ml-1 mt-0.5 flex items-center gap-0.5 text-xs text-muted">
             <Button
               aria-label={comment.has_liked ? '取消点赞' : '点赞'}
-              className="gap-0 px-0"
+              className="gap-0 px-0 text-muted hover:text-foreground"
               isPending={isRating === 'like'}
               size="sm"
               variant="ghost"
@@ -1950,7 +2107,7 @@ function CommentBody({
               <span className="flex size-9 shrink-0 items-center justify-center md:size-8">
                 <AnimatedToggle
                   active={comment.has_liked === true}
-                  on={<ThumbsUpFill className="size-3.5 text-accent" />}
+                  on={<ThumbsUpFill className="size-3.5" />}
                   off={<ThumbsUp className="size-3.5" />}
                 />
               </span>
@@ -1962,7 +2119,7 @@ function CommentBody({
                     animate={{ opacity: 1, width: 'auto', scale: 1 }}
                     exit={{ opacity: 0, width: 0, scale: 0.8 }}
                     transition={{ duration: 0.2, ease: easing }}
-                    className="flex h-9 items-center overflow-hidden whitespace-nowrap leading-none md:h-8"
+                    className="flex h-9 items-center overflow-hidden whitespace-nowrap leading-none text-foreground md:h-8"
                   >
                     <span className="flex h-full items-center pr-2.5 sm:pr-3">
                       <AnimatedNumber value={comment.like_count} />
@@ -1973,7 +2130,7 @@ function CommentBody({
             </Button>
             <Button
               aria-label={comment.has_hated ? '取消点踩' : '点踩'}
-              className="gap-0 px-0"
+              className="gap-0 px-0 text-muted hover:text-foreground"
               isPending={isRating === 'hate'}
               size="sm"
               variant="ghost"
@@ -1982,7 +2139,7 @@ function CommentBody({
               <span className="flex size-9 shrink-0 items-center justify-center md:size-8">
                 <AnimatedToggle
                   active={comment.has_hated === true}
-                  on={<ThumbsDownFill className="size-3.5 text-danger" />}
+                  on={<ThumbsDownFill className="size-3.5" />}
                   off={<ThumbsDown className="size-3.5" />}
                 />
               </span>
@@ -1994,7 +2151,7 @@ function CommentBody({
                     animate={{ opacity: 1, width: 'auto', scale: 1 }}
                     exit={{ opacity: 0, width: 0, scale: 0.8 }}
                     transition={{ duration: 0.2, ease: easing }}
-                    className="flex h-9 items-center overflow-hidden whitespace-nowrap leading-none md:h-8"
+                    className="flex h-9 items-center overflow-hidden whitespace-nowrap leading-none text-foreground md:h-8"
                   >
                     <span className="flex h-full items-center pr-2.5 sm:pr-3">
                       <AnimatedNumber value={comment.hate_count} />
@@ -2004,7 +2161,7 @@ function CommentBody({
               </AnimatePresence>
             </Button>
             <Button
-              className="min-w-8 px-1.5 sm:px-2"
+              className="min-w-8 px-1.5 text-muted hover:text-foreground sm:px-2"
               size="sm"
               variant="ghost"
               onPress={handleStartReply}
@@ -2133,7 +2290,7 @@ function DeleteCommentDialog({
             <AlertDialog.Heading>删除评论</AlertDialog.Heading>
           </AlertDialog.Header>
           <AlertDialog.Body>
-            <p className="text-sm leading-6 text-muted">
+            <p className="text-sm leading-6">
               删除后无法恢复。若这条评论已有回复，评论内容会被清空并保留回复串。
             </p>
           </AlertDialog.Body>
@@ -2244,7 +2401,7 @@ function ReportDialog({
           </AlertDialog.Header>
           <AlertDialog.Body className="overflow-visible">
             {isLoadingReasons ? (
-              <div className="flex items-center gap-2 text-sm text-muted">
+              <div className="flex items-center gap-2 text-sm">
                 <Spinner size="sm" /> 加载中…
               </div>
             ) : (
@@ -2324,7 +2481,7 @@ function CommentAvatar({
     return (
       <img
         alt={nickname ?? '用户头像'}
-        className="rounded-full bg-surface-secondary object-cover"
+        className="rounded-full object-cover ring-2 ring-background"
         height={size}
         src={avatar}
         width={size}
@@ -2334,7 +2491,7 @@ function CommentAvatar({
   return (
     <div
       aria-hidden
-      className="flex items-center justify-center rounded-full bg-surface-secondary text-muted"
+      className="flex items-center justify-center rounded-full bg-surface-secondary text-muted ring-2 ring-background"
       style={{ width: size, height: size }}
     >
       <Person className="size-[55%]" />
@@ -2344,15 +2501,17 @@ function CommentAvatar({
 
 function CommentsEmpty() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-default px-6 py-10 text-center">
+    <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border/80 bg-surface-secondary/55 px-5 py-4 text-left">
       <div
         aria-hidden
-        className="flex size-10 items-center justify-center rounded-2xl bg-surface text-muted"
+        className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background text-muted shadow-sm ring-1 ring-border/60"
       >
-        <Comments className="size-5" />
+        <Comments className="size-[1.125rem]" />
       </div>
-      <p className="text-sm font-medium text-foreground">暂无评论</p>
-      <p className="text-xs text-muted">来抢沙发，分享您的看法吧。</p>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">暂无评论</p>
+        <p className="mt-0.5 text-xs text-muted">来抢沙发，分享您的看法吧。</p>
+      </div>
     </div>
   )
 }
@@ -2363,7 +2522,7 @@ function CommentsSkeleton() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="flex gap-2.5 rounded-xl border border-default bg-surface p-3 sm:gap-3 sm:rounded-2xl sm:p-4"
+          className="flex gap-2.5 rounded-xl border border-border/70 bg-background p-3 sm:gap-3 sm:rounded-2xl sm:p-4"
         >
           <Skeleton className="size-8 shrink-0 rounded-full sm:size-9" />
           <div className="flex flex-1 flex-col gap-2">
@@ -2379,17 +2538,135 @@ function CommentsSkeleton() {
 
 function MaterialDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-6 sm:p-8">
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-1.5">
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-5 w-20 rounded-full" />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 border-b border-border/70 bg-background px-5 pb-5 pt-6 sm:px-10 sm:pb-7 sm:pt-8">
+        <div className="flex min-w-0 items-start gap-3 pr-10 sm:gap-5">
+          <Skeleton className="size-12 shrink-0 rounded-2xl sm:size-14" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              <Skeleton className="h-5 w-14 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-18 rounded-full" />
+            </div>
+            <Skeleton className="h-7 w-4/5 rounded-xl sm:h-8 sm:w-3/5" />
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-4 w-40 rounded-lg" />
+              <Skeleton className="h-4 w-32 rounded-lg" />
+            </div>
+          </div>
         </div>
-        <Skeleton className="h-7 w-3/5 rounded-xl" />
       </div>
-      <Skeleton className="h-32 w-full rounded-2xl" />
-      <Skeleton className="h-24 w-full rounded-2xl" />
-      <Skeleton className="h-32 w-full rounded-2xl" />
+
+      <div className={`flex min-h-0 flex-1 flex-col ${detailSurfaceBg}`}>
+        <div className="mx-4 mt-3 lg:hidden">
+          <div className="flex gap-2">
+            <Skeleton className="h-9 flex-1 rounded-xl" />
+            <Skeleton className="h-9 flex-1 rounded-xl" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 px-5 pb-6 pt-4 sm:px-10 sm:pb-9 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-x-8">
+          <main className="flex min-w-0 flex-col gap-5">
+            <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5">
+              <div className="border-b border-border/60 bg-linear-to-r from-background to-surface-secondary/70 px-4 py-4 sm:px-5">
+                <div className="flex items-end justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-5 w-24 rounded-lg" />
+                    <Skeleton className="mt-2 h-4 w-48 rounded-lg" />
+                  </div>
+                  <Skeleton className="hidden h-6 w-20 rounded-full sm:block" />
+                </div>
+              </div>
+              <div className="grid gap-px bg-border/50 sm:grid-cols-2">
+                {[0, 1, 2, 3].map((item) => (
+                  <div
+                    key={item}
+                    className="flex min-w-0 flex-col gap-1 bg-background px-4 py-3.5 sm:px-5"
+                  >
+                    <Skeleton className="h-3 w-14 rounded-md" />
+                    <Skeleton className="h-4 w-3/4 rounded-md" />
+                  </div>
+                ))}
+                <div className="flex min-w-0 flex-col gap-2 bg-background px-4 py-4 sm:col-span-2 sm:px-5">
+                  <Skeleton className="h-3 w-18 rounded-md" />
+                  <div className="rounded-2xl border border-border/60 bg-surface-secondary/60 px-4 py-3">
+                    <Skeleton className="h-4 w-full rounded-md" />
+                    <Skeleton className="mt-2 h-4 w-5/6 rounded-md" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5 lg:block">
+              <div className="flex items-center justify-between border-b border-border/60 bg-linear-to-r from-background to-surface-secondary/70 px-4 py-3 sm:px-5">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="size-8 rounded-xl" />
+                  <Skeleton className="h-5 w-24 rounded-lg" />
+                </div>
+                <Skeleton className="h-8 w-20 rounded-full" />
+              </div>
+              <div className="flex flex-col gap-4 p-4 sm:p-5">
+                <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-background">
+                  <div className="px-4 pb-3 pt-4 sm:px-5">
+                    <Skeleton className="h-16 w-full rounded-xl" />
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border/60 bg-surface-secondary/55 px-4 py-2 sm:px-5 sm:py-2.5">
+                    <Skeleton className="h-4 w-16 rounded-md" />
+                    <Skeleton className="h-8 w-16 rounded-full" />
+                  </div>
+                </div>
+                <CommentsSkeleton />
+              </div>
+            </div>
+          </main>
+
+          <aside className="hidden lg:block">
+            <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5">
+              <div className="border-b border-border/60 bg-linear-to-br from-accent-soft/80 via-background to-surface-secondary px-5 pb-4 pt-5">
+                <div className="flex min-w-0 gap-3">
+                  <Skeleton className="size-10 shrink-0 rounded-2xl" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton className="h-5 w-24 rounded-lg" />
+                    <Skeleton className="mt-2 h-4 w-full rounded-lg" />
+                    <Skeleton className="mt-2 h-4 w-4/5 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 bg-background px-5 py-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                </div>
+                <Skeleton className="h-11 w-full rounded-full" />
+              </div>
+              <div className="flex justify-between border-t border-border/60 bg-surface-secondary/55 px-3 py-2">
+                <Skeleton className="h-8 w-16 rounded-full" />
+                <div className="flex gap-1.5">
+                  <Skeleton className="h-8 w-16 rounded-full" />
+                  <Skeleton className="h-8 w-16 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div className="shrink-0 border-t border-border/60 bg-background/85 px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_rgb(0_0_0/0.06)] backdrop-blur-xl sm:px-7 lg:hidden">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-14 rounded-xl" />
+              <Skeleton className="h-14 rounded-xl" />
+            </div>
+            <Skeleton className="h-11 w-full rounded-full" />
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-8 w-16 rounded-full" />
+              <div className="flex gap-1.5">
+                <Skeleton className="h-8 w-16 rounded-full" />
+                <Skeleton className="h-8 w-16 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

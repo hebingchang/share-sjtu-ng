@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { searchCourses } from '../api/courses'
-import { useAuth } from '../auth/context'
+import { useAuth } from '../auth/use-auth'
 import type { Course } from '../types/course'
 
 function formatLatestUpload(iso: string): string {

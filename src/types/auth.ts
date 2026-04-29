@@ -5,5 +5,6 @@ export interface OAuthEndpoint {
 export interface OAuthConfig {
   client_id: string
   endpoint: OAuthEndpoint
+  redirect_uri?: string
   scopes: string[]
 }
