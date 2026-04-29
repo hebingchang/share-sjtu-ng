@@ -64,3 +64,7 @@ body {
   font-family: "ShareDigits", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-variant-numeric: tabular-nums;
 }
+
+.safari-rounded-clip {
+  clip-path: inset(0 round 1.5rem);
+}

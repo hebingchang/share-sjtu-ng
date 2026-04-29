@@ -393,7 +393,7 @@ function CourseHeader({
   taxonomy: string[]
 }) {
   return (
-    <header className="relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-7 sm:px-8 sm:py-8">
+    <header className="safari-rounded-clip relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-7 sm:px-8 sm:py-8">
       <div
         aria-hidden
         className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-accent/10 blur-3xl"

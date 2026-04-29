@@ -55,7 +55,7 @@ export default function OAuthCallbackPage({ channel }: { channel: string }) {
   }, [channel, navigate])
 
   return (
-    <div className="flex min-h-svh items-center justify-center">
+    <div className="flex min-h-dvh items-center justify-center">
       <p className="text-sm text-muted">{message}</p>
     </div>
   )

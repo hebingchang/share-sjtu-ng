@@ -8,7 +8,7 @@ import {
   Link,
   Separator,
 } from '@heroui/react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/use-auth'
 import { DialogProvider } from '../dialog/provider'
@@ -48,6 +48,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [isScrolled, setIsScrolled] = useState(
     typeof window !== 'undefined' && window.scrollY > SCROLL_THRESHOLD,
   )
+  const isScrolledRef = useRef(isScrolled)
   const currentYear = new Date().getFullYear()
   const userTypeLabel = profile?.type ? (USER_TYPE_LABELS[profile.type] ?? profile.type) : null
   const displayName = profile?.nickname?.trim() || profile?.name
@@ -55,7 +56,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   useEffect(() => {
     let ticking = false
     const update = () => {
-      setIsScrolled(window.scrollY > SCROLL_THRESHOLD)
+      const nextIsScrolled = window.scrollY > SCROLL_THRESHOLD
+      if (isScrolledRef.current !== nextIsScrolled) {
+        isScrolledRef.current = nextIsScrolled
+        setIsScrolled(nextIsScrolled)
+      }
       ticking = false
     }
     const handleScroll = () => {
@@ -86,8 +91,8 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <DialogProvider>
-      <div className="flex min-h-svh flex-col">
-        <header className="sticky top-0 z-40 flex w-full justify-center px-6 py-4 max-md:px-4">
+      <div className="flex min-h-dvh flex-col">
+        <header className="sticky top-0 z-40 flex h-24 shrink-0 items-start justify-center px-6 py-4 max-md:px-4">
           <div
             className={`flex w-full items-center justify-between gap-4 transition-all duration-300 ease-out ${
               isScrolled
@@ -162,7 +167,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
           {token ? children : null}
         </main>
 

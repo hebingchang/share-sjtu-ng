@@ -905,7 +905,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section className="relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-12 sm:px-10 sm:py-16">
+      <section className="safari-rounded-clip relative isolate overflow-hidden rounded-3xl border border-default bg-surface-secondary px-6 py-12 sm:px-10 sm:py-16">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-accent/10 blur-3xl"
