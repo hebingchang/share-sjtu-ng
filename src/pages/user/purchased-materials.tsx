@@ -11,15 +11,10 @@ import {
   ErrorPanel,
   LoadingState,
   MotionItem,
-  MotionStagger,
+  PaginatedListTransition,
   UserPagination,
 } from './shared'
-import {
-  formatDateTime,
-  formatFileSize,
-  getMaterialLink,
-  isAbortError,
-} from './utils'
+import { formatDateTime, formatFileSize, getMaterialLink, isAbortError } from './utils'
 
 const PURCHASED_MATERIALS_TITLE = '我购买的资料'
 
@@ -91,18 +86,27 @@ function PurchasedMaterialItem({ purchase }: { purchase: Purchase }) {
 }
 
 export function PurchasedMaterialsView() {
-  const { token } = useAuth()
+  const { isInitializing, token } = useAuth()
   const [page, setPage] = useState(1)
   const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [loadedPage, setLoadedPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   const totalPages = getTotalPages(total)
+  const isPageLoading = isLoading && purchases.length > 0 && page !== loadedPage
+
+  function handlePageChange(nextPage: number) {
+    if (nextPage === page) return
+
+    setLoading(true)
+    setPage(nextPage)
+  }
 
   useEffect(() => {
-    if (!token) return
+    if (!token || isInitializing) return
 
     const authToken = token
     const controller = new AbortController()
@@ -116,6 +120,7 @@ export function PurchasedMaterialsView() {
       try {
         const data = await getUserPurchaseMaterials({
           page,
+          pageSize: USER_CENTER_PAGE_SIZE,
           signal: controller.signal,
           token: authToken,
         })
@@ -124,11 +129,14 @@ export function PurchasedMaterialsView() {
         const nextTotalPages = getTotalPages(nextTotal)
         if (page > nextTotalPages) {
           shouldKeepLoading = true
+          setPurchases([])
+          setTotal(nextTotal)
           setPage(nextTotalPages)
           return
         }
         setPurchases(data.records ?? [])
         setTotal(nextTotal)
+        setLoadedPage(page)
       } catch (err) {
         if (isAbortError(err)) return
         setPurchases([])
@@ -142,7 +150,7 @@ export function PurchasedMaterialsView() {
     void loadMaterials()
 
     return () => controller.abort()
-  }, [page, reloadKey, token])
+  }, [isInitializing, page, reloadKey, token])
 
   if (isLoading && purchases.length === 0) {
     return <LoadingState label={`正在加载${PURCHASED_MATERIALS_TITLE}`} />
@@ -165,19 +173,19 @@ export function PurchasedMaterialsView() {
       </p>
 
       {purchases.length > 0 ? (
-        <MotionStagger className="flex flex-col gap-3" motionKey={`purchased-${page}`}>
+        <PaginatedListTransition
+          isLoading={isPageLoading}
+          loadingLabel={`正在加载${PURCHASED_MATERIALS_TITLE}`}
+          motionKey={`purchased-${loadedPage}`}
+        >
           {purchases.map((purchase) => (
             <MotionItem key={purchase.id}>
               <PurchasedMaterialItem purchase={purchase} />
             </MotionItem>
           ))}
-        </MotionStagger>
+        </PaginatedListTransition>
       ) : (
-        <EmptyPanel
-          description="还没有购买过资料。"
-          icon={ShoppingCart}
-          title="暂无购买资料"
-        />
+        <EmptyPanel description="还没有购买过资料。" icon={ShoppingCart} title="暂无购买资料" />
       )}
 
       {totalPages > 1 ? (
@@ -186,7 +194,8 @@ export function PurchasedMaterialsView() {
           page={page}
           total={total}
           totalPages={totalPages}
-          onChange={setPage}
+          isDisabled={isLoading}
+          onChange={handlePageChange}
         />
       ) : null}
     </div>

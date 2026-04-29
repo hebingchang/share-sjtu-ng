@@ -9,10 +9,7 @@ import type { UserCourse, UserCourseTerm } from '../types/user-course'
 export type PointLogSortBy = 'date' | 'delta'
 export type PointLogSortOrder = 'asc' | 'desc'
 
-async function readPayload<T>(
-  response: globalThis.Response,
-  fallbackMessage: string,
-): Promise<T> {
+async function readPayload<T>(response: globalThis.Response, fallbackMessage: string): Promise<T> {
   const payload = (await response.json()) as RpcResponse<T>
 
   if (!response.ok || !payload.success) {
@@ -198,14 +195,17 @@ export async function getUserCoursesByTerm({
 
 export async function getUserPurchaseMaterials({
   page = 1,
+  pageSize,
   signal,
   token,
 }: {
   page?: number
+  pageSize?: number
   signal?: AbortSignal
   token: string
 }): Promise<PaginatedPurchases> {
   const params = new URLSearchParams({ page: String(page) })
+  if (pageSize) params.set('page_size', String(pageSize))
   const response = await fetch(`${constants.API_URL}/api/v1/user/materials/purchase?${params}`, {
     headers: { Auth: token },
     signal,
@@ -216,14 +216,17 @@ export async function getUserPurchaseMaterials({
 
 export async function getUserUploadMaterials({
   page = 1,
+  pageSize,
   signal,
   token,
 }: {
   page?: number
+  pageSize?: number
   signal?: AbortSignal
   token: string
 }): Promise<PaginatedMaterials> {
   const params = new URLSearchParams({ page: String(page) })
+  if (pageSize) params.set('page_size', String(pageSize))
   const response = await fetch(`${constants.API_URL}/api/v1/user/materials/upload?${params}`, {
     headers: { Auth: token },
     signal,
