@@ -18,7 +18,7 @@ import { useDialog } from '../dialog/use-dialog'
 import type { Profile } from '../types/user'
 
 const MAX_NICKNAME_LENGTH = 16
-const SITE_LAUNCH_YEAR = 2014
+const USER_ID_FORMATTER = new Intl.NumberFormat('zh-CN')
 
 type Step = 'form' | 'welcome'
 type NicknameModalMode = 'setup' | 'edit'
@@ -227,7 +227,12 @@ export default function NicknameSetupModal({
                   </Modal.Body>
                 </motion.div>
               ) : (
-                <WelcomeStep key="welcome" name={welcomeName} onClose={dismissWelcome} />
+                <WelcomeStep
+                  key="welcome"
+                  name={welcomeName}
+                  userId={pendingProfile?.id ?? null}
+                  onClose={dismissWelcome}
+                />
               )}
             </AnimatePresence>
           </Modal.Dialog>
@@ -262,8 +267,20 @@ export default function NicknameSetupModal({
   )
 }
 
-function WelcomeStep({ name, onClose }: { name: string; onClose: () => void }) {
-  const yearsRunning = new Date().getFullYear() - SITE_LAUNCH_YEAR
+function WelcomeStep({
+  name,
+  userId,
+  onClose,
+}: {
+  name: string
+  userId: number | null
+  onClose: () => void
+}) {
+  const userSequenceLabel =
+    typeof userId === 'number' && Number.isFinite(userId) && userId > 0
+      ? USER_ID_FORMATTER.format(userId)
+      : null
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -342,15 +359,17 @@ function WelcomeStep({ name, onClose }: { name: string; onClose: () => void }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.32, delay: 0.7 }}
       >
-        自{' '}
-        <span className="font-medium tabular-nums text-foreground">
-          {SITE_LAUNCH_YEAR}
-        </span>{' '}
-        年起，已陪伴一届届交大人{' '}
-        <span className="font-medium tabular-nums text-foreground">
-          {yearsRunning}
-        </span>{' '}
-        年
+        {userSequenceLabel ? (
+          <>
+            感谢您成为传承·交大的第{' '}
+            <span className="font-medium tabular-nums text-foreground">
+              {userSequenceLabel}
+            </span>{' '}
+            位用户
+          </>
+        ) : (
+          '欢迎加入传承·交大'
+        )}
       </motion.p>
 
       <motion.div
