@@ -1,4 +1,5 @@
 import {
+  Bars,
   ChartLine,
   CircleDollar,
   FilePlus,
@@ -166,7 +167,9 @@ function UserPageHeader() {
       <Sidebar.Trigger
         aria-label="打开用户中心导航"
         className="mt-0.5 shrink-0 min-[769px]:hidden"
-      />
+      >
+        <Bars />
+      </Sidebar.Trigger>
       <div className="flex min-w-0 flex-col gap-2">
         <p className="text-sm font-medium text-accent">用户中心</p>
         <AnimatePresence initial={false} mode="wait">
