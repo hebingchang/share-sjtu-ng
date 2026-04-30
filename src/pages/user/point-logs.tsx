@@ -1,5 +1,5 @@
 import { ChartLine, Funnel } from '@gravity-ui/icons'
-import { Label, ListBox, Select, Spinner, type Key } from '@heroui/react'
+import { Label, ListBox, Select, Spinner, Tooltip, type Key } from '@heroui/react'
 import { DataGrid, type DataGridColumn, type DataGridSortDescriptor } from '@heroui-pro/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
@@ -92,6 +92,27 @@ function PointLogMaterialCell({ log }: { log: PointLogRow }) {
       <span className={cx(POINT_LOG_TEXT_CLASS, 'text-muted')} title={log.materialName}>
         {log.materialName}
       </span>
+    )
+  }
+
+  if (!log.material?.id) {
+    return (
+      <Tooltip delay={0}>
+        <Tooltip.Trigger
+          aria-label={`${log.materialName}，资料已被删除`}
+          className={cx(
+            POINT_LOG_TEXT_CLASS,
+            'cursor-help text-foreground outline-none underline-offset-4 decoration-dotted hover:underline focus-visible:underline',
+          )}
+          tabIndex={0}
+        >
+          {log.materialName}
+        </Tooltip.Trigger>
+        <Tooltip.Content showArrow>
+          <Tooltip.Arrow />
+          <p>资料已被删除</p>
+        </Tooltip.Content>
+      </Tooltip>
     )
   }
 

@@ -56,6 +56,10 @@ const SORT_OPTIONS: { id: SortKey; label: string }[] = [
 
 const DEFAULT_SORT: SortKey = 'newest'
 
+function getMaterialNetLikeCount(material: Material): number {
+  return material.like_count - material.hate_count
+}
+
 function sortMaterials(materials: Material[], sort: SortKey): Material[] {
   const recencyDesc = (a: Material, b: Material) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -66,7 +70,9 @@ function sortMaterials(materials: Material[], sort: SortKey): Material[] {
     case 'oldest':
       return copy.sort((a, b) => -recencyDesc(a, b))
     case 'most-liked':
-      return copy.sort((a, b) => b.like_count - a.like_count || recencyDesc(a, b))
+      return copy.sort(
+        (a, b) => getMaterialNetLikeCount(b) - getMaterialNetLikeCount(a) || recencyDesc(a, b),
+      )
     case 'most-purchased':
       return copy.sort((a, b) => b.purchase_count - a.purchase_count || recencyDesc(a, b))
     case 'cheapest':
@@ -1180,6 +1186,8 @@ function MaterialCard({
   material: Material
   onOpen: () => void
 }) {
+  const netLikeCount = getMaterialNetLikeCount(material)
+
   return (
     <Card
       aria-label={`查看 ${material.name || material.file_name || '资料'} 详情`}
@@ -1252,11 +1260,11 @@ function MaterialCard({
         </div>
         {material.like_count > 0 || material.hate_count > 0 ? (
           <span
-            aria-label={`${material.like_count} 个赞`}
+            aria-label={`净赞数 ${netLikeCount}`}
             className="flex items-center gap-1 tabular-nums"
           >
             <Heart className="size-3.5" />
-            {material.like_count}
+            {netLikeCount}
           </span>
         ) : null}
       </Card.Footer>
