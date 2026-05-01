@@ -15,6 +15,7 @@ import { constants } from '../env'
 import type { OAuthConfig } from '../types/auth'
 import type { Response } from '../types/rpc'
 import { useAuth } from '../auth/use-auth'
+import { Link as RouterLink } from 'react-router'
 import {
   buildLoginOAuthUrl,
   clearLoginOAuthCallback,
@@ -28,6 +29,9 @@ import {
 } from '../auth/oauth-login-flow'
 
 type Provider = 'jaccount'
+
+const LEGAL_LINK_CLASS =
+  'text-inherit underline decoration-muted/50 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40'
 
 export default function LoginModal({ isOpen }: { isOpen: boolean }) {
   const { setToken } = useAuth()
@@ -47,8 +51,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
 
       try {
         const response = await fetch(
-          `${constants.API_URL}/auth/jaccount/authorize?` +
-            new URLSearchParams({ code, state }),
+          `${constants.API_URL}/auth/jaccount/authorize?` + new URLSearchParams({ code, state }),
           { method: 'GET', credentials: 'include' },
         )
         const payload = (await response.json()) as Response<string>
@@ -246,7 +249,12 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
 
   return (
     <>
-      <Modal.Backdrop isOpen={isOpen} isDismissable={false} isKeyboardDismissDisabled variant="blur">
+      <Modal.Backdrop
+        isOpen={isOpen}
+        isDismissable={false}
+        isKeyboardDismissDisabled
+        variant="blur"
+      >
         <Modal.Container placement="center" scroll="inside" size="sm">
           <Modal.Dialog className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-105">
             <div className="flex min-h-0 flex-1 flex-col">
@@ -262,7 +270,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                   </div>
                 </Modal.Header>
 
-                <Modal.Body className="mt-7 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-0 pr-1 [scrollbar-width:thin] [&>*]:shrink-0">
+                <Modal.Body className="mt-7 -mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-0 pr-2 [scrollbar-width:thin] [&>*]:shrink-0">
                   <Form
                     aria-label="邮箱登录"
                     className="flex min-w-0 flex-col gap-3"
@@ -275,22 +283,26 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                   >
                     <TextField fullWidth className="min-w-0" name="jaccount" type="text">
                       <Label>邮箱地址</Label>
-                      <InputGroup fullWidth className="min-w-0" variant="secondary">
+                      <InputGroup
+                        fullWidth
+                        className="min-w-0 overflow-visible!"
+                        variant="secondary"
+                      >
                         <InputGroup.Prefix>
                           <Envelope className="size-4 text-muted" />
                         </InputGroup.Prefix>
-                        <InputGroup.Input
-                          className="min-w-0"
-                          placeholder="jAccount"
-                          type="text"
-                        />
+                        <InputGroup.Input className="min-w-0" placeholder="jAccount" type="text" />
                         <InputGroup.Suffix className="text-muted">@sjtu.edu.cn</InputGroup.Suffix>
                       </InputGroup>
                     </TextField>
 
                     <TextField fullWidth className="min-w-0" name="password" type="password">
                       <Label>密码</Label>
-                      <InputGroup fullWidth className="min-w-0" variant="secondary">
+                      <InputGroup
+                        fullWidth
+                        className="min-w-0 overflow-visible!"
+                        variant="secondary"
+                      >
                         <InputGroup.Prefix>
                           <Key className="size-4 text-muted" />
                         </InputGroup.Prefix>
@@ -302,7 +314,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                       </InputGroup>
                     </TextField>
 
-                    <Button className='mt-4 mb-2' fullWidth type="submit" variant="primary">
+                    <Button className="mt-4 mb-2" fullWidth type="submit" variant="primary">
                       登录
                     </Button>
                   </Form>
@@ -342,11 +354,17 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                       <span className="leading-none">使用通行密钥登录</span>
                     </span>
                   </Button>
-
                 </Modal.Body>
 
                 <p className="mt-6 shrink-0 text-center text-xs leading-5 text-muted">
-                  继续登录代表您同意传承·交大的服务条款和隐私政策
+                  {'继续登录代表您同意传承·交大的 '}
+                  <RouterLink className={LEGAL_LINK_CLASS} to="/terms">
+                    服务条款
+                  </RouterLink>
+                  {' 和 '}
+                  <RouterLink className={LEGAL_LINK_CLASS} to="/privacy">
+                    隐私政策
+                  </RouterLink>
                 </p>
               </div>
             </div>
@@ -354,10 +372,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
         </Modal.Container>
       </Modal.Backdrop>
 
-      <AlertDialog.Backdrop
-        isOpen={isEmailNoticeVisible}
-        onOpenChange={setEmailNoticeVisible}
-      >
+      <AlertDialog.Backdrop isOpen={isEmailNoticeVisible} onOpenChange={setEmailNoticeVisible}>
         <AlertDialog.Container placement="center">
           <AlertDialog.Dialog>
             <AlertDialog.Header>
@@ -376,10 +391,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
         </AlertDialog.Container>
       </AlertDialog.Backdrop>
 
-      <AlertDialog.Backdrop
-        isOpen={isAuthErrorOpen}
-        onOpenChange={setAuthErrorOpen}
-      >
+      <AlertDialog.Backdrop isOpen={isAuthErrorOpen} onOpenChange={setAuthErrorOpen}>
         <AlertDialog.Container placement="center">
           <AlertDialog.Dialog>
             <AlertDialog.Header>

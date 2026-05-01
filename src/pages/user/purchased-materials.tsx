@@ -16,7 +16,7 @@ import {
 } from './shared'
 import { formatDateTime, formatFileSize, getMaterialLink, isAbortError } from './utils'
 
-const PURCHASED_MATERIALS_TITLE = '我购买的资料'
+const PURCHASED_MATERIALS_TITLE = '我兑换的资料'
 
 function getTotalPages(total: number): number {
   return Math.max(1, Math.ceil(total / USER_CENTER_PAGE_SIZE))
@@ -185,7 +185,7 @@ export function PurchasedMaterialsView() {
           ))}
         </PaginatedListTransition>
       ) : (
-        <EmptyPanel description="还没有购买过资料。" icon={ShoppingCart} title="暂无购买资料" />
+        <EmptyPanel description="还没有兑换过资料。" icon={ShoppingCart} title="暂无兑换资料" />
       )}
 
       {totalPages > 1 ? (

@@ -98,12 +98,12 @@ function UserNav() {
             href="/user/materials/purchase"
             id="materials-purchase"
             isCurrent={location.pathname === '/user/materials/purchase'}
-            textValue="我购买的资料"
+            textValue="我兑换的资料"
           >
             <Sidebar.MenuIcon>
               <ShoppingCart />
             </Sidebar.MenuIcon>
-            <Sidebar.MenuLabel>我购买的资料</Sidebar.MenuLabel>
+            <Sidebar.MenuLabel>我兑换的资料</Sidebar.MenuLabel>
           </Sidebar.MenuItem>
         </Sidebar.Submenu>
       </Sidebar.MenuItem>

@@ -20,7 +20,7 @@ export const USER_TYPE_LABELS: Record<string, string> = {
 export const USER_PAGE_TITLES: Record<string, string> = {
   '/user/basic': '基本信息',
   '/user/materials/upload': '我上传的资料',
-  '/user/materials/purchase': '我购买的资料',
+  '/user/materials/purchase': '我兑换的资料',
   '/user/points/logs': '积分变动日志',
   '/user/points/redeem': '积分兑换',
   '/user/points/gift': '积分转账',

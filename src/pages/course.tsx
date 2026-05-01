@@ -50,7 +50,7 @@ const SORT_OPTIONS: { id: SortKey; label: string }[] = [
   { id: 'newest', label: '最新上传' },
   { id: 'oldest', label: '最早上传' },
   { id: 'most-liked', label: '点赞最多' },
-  { id: 'most-purchased', label: '购买最多' },
+  { id: 'most-purchased', label: '兑换最多' },
   { id: 'cheapest', label: '积分最少' },
 ]
 
@@ -292,14 +292,14 @@ export default function CoursePage() {
   const replacementCode = course?.is_deprecated ? course.latest_course?.code : null
   const primaryCode = replacementCode ?? course?.code
   const showOldCode = !!replacementCode && course?.code && course.code !== replacementCode
-  const taxonomy = useMemo(() => {
-    if (!course) return [] as string[]
-    return [...new Set([
-      course.course_type?.name,
-      course.course_category?.name,
-      course.course_nature?.name,
-    ])].filter(Boolean) as string[]
-  }, [course])
+  // const taxonomy = useMemo(() => {
+  //   if (!course) return [] as string[]
+  //   return [...new Set([
+  //     course.course_type?.name,
+  //     course.course_category?.name,
+  //     course.course_nature?.name,
+  //   ])].filter(Boolean) as string[]
+  // }, [course])
 
   return (
     <div className="flex flex-col gap-6">
@@ -320,7 +320,7 @@ export default function CoursePage() {
               course={course}
               primaryCode={primaryCode}
               showOldCode={!!showOldCode}
-              taxonomy={taxonomy}
+              taxonomy={[]}
               onUploadPress={openUploadModal}
             />
 
@@ -1244,7 +1244,7 @@ function MaterialCard({
       <Card.Footer className="mt-auto flex-wrap items-center justify-between gap-2 text-xs text-muted">
         <div className="flex items-center gap-3">
           <span
-            aria-label={`${material.purchase_count} 次购买`}
+            aria-label={`${material.purchase_count} 次兑换`}
             className="flex items-center gap-1 tabular-nums"
           >
             <ShoppingCart className="size-3.5" />

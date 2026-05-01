@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { updateUserProfile } from '../api/user'
 import { useAuth } from '../auth/use-auth'
-import { useDialog } from '../dialog/use-dialog'
 import {
   clampAvatarCropOffset,
   createSquareAvatarBlob,
@@ -37,7 +36,6 @@ interface DragState {
 
 export default function AvatarUploadModal({ isOpen, onClose }: AvatarUploadModalProps) {
   const { profile, setProfile, token } = useAuth()
-  const { showDialog } = useDialog()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const previewUrlRef = useRef<string | null>(null)
@@ -174,16 +172,7 @@ export default function AvatarUploadModal({ isOpen, onClose }: AvatarUploadModal
   }, [])
 
   const handleSubmit = async () => {
-    const nickname = profile?.nickname?.trim()
     if (!token || !profile) return
-    if (!nickname) {
-      showDialog({
-        description: '设置昵称后再修改头像。',
-        status: 'warning',
-        title: '需要先设置昵称',
-      })
-      return
-    }
     if (!imageRef.current || !imageSize) {
       setError('请选择图片')
       return
@@ -198,7 +187,7 @@ export default function AvatarUploadModal({ isOpen, onClose }: AvatarUploadModal
         size: imageSize,
         zoom,
       })
-      const nextProfile = await updateUserProfile({ avatar, nickname, token })
+      const nextProfile = await updateUserProfile({ avatar, token })
       setProfile(nextProfile)
       reset()
       onClose()

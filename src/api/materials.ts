@@ -173,7 +173,7 @@ export async function purchaseMaterial({
   return request<string>(
     `/api/v1/material/purchase/${encodeURIComponent(String(id))}`,
     { token, signal },
-    '购买失败',
+    '兑换失败',
   )
 }
 
@@ -208,11 +208,14 @@ export async function rateMaterial({
 }
 
 export async function getMaterialReportReasons({
+  id,
   token,
   signal,
-}: RequestOptions): Promise<MaterialReportReason[]> {
+}: {
+  id: string | number
+} & RequestOptions): Promise<MaterialReportReason[]> {
   return request<MaterialReportReason[]>(
-    `/api/v1/material/report-reasons`,
+    `/api/v1/material/report-reasons/${encodeURIComponent(String(id))}`,
     { token, signal },
     '获取投诉原因失败',
   )

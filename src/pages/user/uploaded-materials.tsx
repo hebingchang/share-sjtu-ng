@@ -114,7 +114,7 @@ function UploadedMaterialItem({
           <span className="tabular-nums">{material.points} 积分</span>
           <span className="flex items-center gap-1.5 tabular-nums">
             <ShoppingCart className="size-3.5" />
-            {material.purchase_count} 次购买
+            {material.purchase_count} 次兑换
           </span>
           <span>{size ?? '大小未知'}</span>
         </div>
@@ -175,7 +175,7 @@ function DeleteUploadedMaterialDialog({
           </AlertDialog.Header>
           <AlertDialog.Body>
             <p className="text-sm leading-6 text-muted">
-              删除后无法恢复，其他用户也将无法购买或下载这份资料。
+              删除后无法恢复，其他用户也将无法兑换或下载这份资料。
             </p>
             <p className="mt-3 truncate rounded-lg bg-surface-secondary px-3 py-2 text-sm font-medium text-foreground">
               {title}

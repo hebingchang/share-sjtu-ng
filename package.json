@@ -9,6 +9,7 @@
     "dev:client": "vite",
     "typecheck": "tsc -b tsconfig.app.json tsconfig.node.json && tsc -p tsconfig.server.json --noEmit",
     "build": "npm run typecheck && npm run build:client && npm run build:server",
+    "build:frontend": "tsc -b tsconfig.app.json tsconfig.node.json && npm run build:client",
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "lint": "eslint .",

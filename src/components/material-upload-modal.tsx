@@ -10,12 +10,14 @@ import {
 } from '@gravity-ui/icons'
 import {
   Button,
+  Checkbox,
   ComboBox,
   Description,
   FieldError,
   Form,
   Input,
   Label,
+  Link,
   ListBox,
   Modal,
   NumberField,
@@ -44,12 +46,15 @@ import {
   requestMaterialUpload,
   updateMaterial,
 } from '../api/materials'
+import { useAuth } from '../auth/use-auth'
 import { useDialog } from '../dialog/use-dialog'
 import type { Course } from '../types/course'
 import type { ClassSummary, Material, MaterialType } from '../types/material'
 
 const COURSE_SEARCH_DEBOUNCE_MS = 260
 const MAX_FILE_SIZE = 100 * 1024 * 1024
+const AGREEMENT_LINK_CLASS =
+  '!text-inherit underline underline-offset-4 decoration-current/35 transition-colors hover:decoration-current'
 
 type DropZoneDropEvent = Parameters<NonNullable<ComponentProps<typeof DropZone.Area>['onDrop']>>[0]
 
@@ -68,6 +73,7 @@ interface UploadFileState {
 }
 
 interface FormErrors {
+  agreement?: string
   course?: string
   description?: string
   file?: string
@@ -324,6 +330,7 @@ function buildValidationErrors({
   selectedClassId,
   selectedCourse,
   selectedMaterialTypeId,
+  uploadAgreementAccepted,
   uploadFile,
 }: {
   description: string
@@ -333,6 +340,7 @@ function buildValidationErrors({
   selectedClassId: Key | null
   selectedCourse: Course | null
   selectedMaterialTypeId: Key | null
+  uploadAgreementAccepted: boolean
   uploadFile: UploadFileState | null
 }): FormErrors {
   const errors: FormErrors = {}
@@ -356,6 +364,9 @@ function buildValidationErrors({
     } else if (uploadFile.status !== 'complete' || !uploadFile.path) {
       errors.file = '文件仍在上传，请稍候'
     }
+    if (!uploadAgreementAccepted) {
+      errors.agreement = '请先阅读并同意资料上传规范'
+    }
   }
 
   return errors
@@ -377,8 +388,10 @@ export default function MaterialUploadModal({
   token: string
 }) {
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const { showDialog } = useDialog()
   const isEditMode = !!editMaterial
+  const hasNickname = Boolean(profile?.nickname?.trim())
   const [courseInput, setCourseInput] = useState('')
   const [courseOptions, setCourseOptions] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
@@ -401,6 +414,7 @@ export default function MaterialUploadModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [uploadFile, setUploadFile] = useState<UploadFileState | null>(null)
+  const [uploadAgreementAccepted, setUploadAgreementAccepted] = useState(false)
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [isSubmitting, setSubmitting] = useState(false)
   const [appliedInitialSelectionKey, setAppliedInitialSelectionKey] = useState<string | null>(null)
@@ -438,6 +452,7 @@ export default function MaterialUploadModal({
     setName('')
     setDescription('')
     setUploadFile(null)
+    setUploadAgreementAccepted(false)
     setSubmitAttempted(false)
     setSubmitting(false)
   }, [abortSubmit, abortUpload])
@@ -454,6 +469,7 @@ export default function MaterialUploadModal({
           editMaterial.material_type_id,
           editMaterial.points,
           getMaterialAnonymous(editMaterial),
+          hasNickname ? 'named' : 'anonymous-only',
         ].join(':')
       : null
   const initialSelectionKey =
@@ -482,10 +498,11 @@ export default function MaterialUploadModal({
       editMaterial.material_type_id ? String(editMaterial.material_type_id) : null,
     )
     setPoints(editMaterial.points)
-    setAnonymous(getMaterialAnonymous(editMaterial))
+    setAnonymous(hasNickname ? getMaterialAnonymous(editMaterial) : true)
     setName(editMaterial.name)
     setDescription(editMaterial.description)
     setUploadFile(null)
+    setUploadAgreementAccepted(false)
     setSubmitAttempted(false)
     setSubmitting(false)
   } else if (
@@ -507,6 +524,7 @@ export default function MaterialUploadModal({
     setTeacherInput(normalizedClassId ? (teacherName ?? '') : '')
     setClassesLoading(true)
     setClassesError(null)
+    setUploadAgreementAccepted(false)
   }
 
   useEffect(
@@ -609,6 +627,7 @@ export default function MaterialUploadModal({
         selectedClassId,
         selectedCourse,
         selectedMaterialTypeId,
+        uploadAgreementAccepted,
         uploadFile,
       }),
     [
@@ -619,6 +638,7 @@ export default function MaterialUploadModal({
       selectedClassId,
       selectedCourse,
       selectedMaterialTypeId,
+      uploadAgreementAccepted,
       uploadFile,
     ],
   )
@@ -834,6 +854,7 @@ export default function MaterialUploadModal({
   const materialNamePlaceholder = getMaterialNamePlaceholder(selectedMaterialType?.name)
   const currentMaterialFileName = editMaterial ? getMaterialFileName(editMaterial) : ''
   const currentMaterialFileExtension = getExtension(currentMaterialFileName)
+  const effectiveAnonymous = hasNickname ? anonymous : true
 
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -857,7 +878,7 @@ export default function MaterialUploadModal({
           token,
           signal: controller.signal,
           data: {
-            anonymous,
+            anonymous: effectiveAnonymous,
             description: description.trim(),
             material_type_id: Number(selectedMaterialTypeId),
             name: name.trim(),
@@ -916,7 +937,7 @@ export default function MaterialUploadModal({
         token,
         signal: controller.signal,
         data: {
-          anonymous,
+          anonymous: effectiveAnonymous,
           class_id: Number(selectedClassId),
           course_id: selectedCourse.id,
           description: description.trim(),
@@ -967,9 +988,9 @@ export default function MaterialUploadModal({
     },
     [
       abortSubmit,
-      anonymous,
       description,
       editMaterial,
+      effectiveAnonymous,
       hasValidationErrors,
       isEditMode,
       name,
@@ -1002,7 +1023,7 @@ export default function MaterialUploadModal({
   }, [handleOpenChange])
 
   const isFileUploading = !isEditMode && uploadFile?.status === 'uploading'
-  const canSubmit = !isSubmitting && !isFileUploading
+  const canSubmit = !isSubmitting && !isFileUploading && (isEditMode || uploadAgreementAccepted)
 
   return (
     <Modal.Backdrop isOpen={isOpen} variant="blur" onOpenChange={handleOpenChange}>
@@ -1280,7 +1301,8 @@ export default function MaterialUploadModal({
 
                       <Switch
                         className="sm:col-span-2"
-                        isSelected={anonymous}
+                        isDisabled={!hasNickname}
+                        isSelected={effectiveAnonymous}
                         name="anonymous"
                         onChange={setAnonymous}
                       >
@@ -1290,7 +1312,11 @@ export default function MaterialUploadModal({
                         <Switch.Content>
                           <Label className="text-sm">{isEditMode ? '匿名展示' : '匿名上传'}</Label>
                           <Description>
-                            开启后资料详情中显示为匿名用户；关闭后显示你的昵称。
+                            {hasNickname
+                              ? '开启后资料详情中显示为匿名用户；关闭后显示你的昵称。'
+                              : isEditMode
+                                ? '未设置昵称时只能匿名展示；设置昵称后可关闭匿名。'
+                                : '未设置昵称时只能匿名上传；设置昵称后可关闭匿名。'}
                           </Description>
                         </Switch.Content>
                       </Switch>
@@ -1403,18 +1429,65 @@ export default function MaterialUploadModal({
               </div>
             </Modal.Body>
 
-            <Modal.Footer className="border-t border-separator bg-surface/60 px-5 py-4 sm:px-7">
-              <Button type="button" variant="secondary" onPress={handleClosePress}>
-                关闭
-              </Button>
-              <Button
-                isDisabled={!canSubmit}
-                isPending={isSubmitting}
-                type="submit"
-                variant="primary"
-              >
-                {isEditMode ? '保存修改' : isFileUploading ? '文件上传中' : '提交资料'}
-              </Button>
+            <Modal.Footer className="flex flex-col items-stretch gap-3 border-t border-separator bg-surface/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-7">
+              {isEditMode ? (
+                <div className="hidden sm:block" />
+              ) : (
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Checkbox
+                    aria-describedby={
+                      visibleErrors.agreement ? 'material-upload-agreement-error' : undefined
+                    }
+                    className="max-w-full"
+                    id="material-upload-agreement"
+                    isInvalid={!!visibleErrors.agreement}
+                    isSelected={uploadAgreementAccepted}
+                    name="uploadAgreement"
+                    value="accepted"
+                    onChange={setUploadAgreementAccepted}
+                  >
+                    <Checkbox.Control>
+                      <Checkbox.Indicator />
+                    </Checkbox.Control>
+                    <Checkbox.Content>
+                      <Label
+                        className="text-sm leading-6 text-foreground"
+                        htmlFor="material-upload-agreement"
+                      >
+                        {'我已阅读并同意 '}
+                        <Link
+                          className={AGREEMENT_LINK_CLASS}
+                          href="/upload-rules"
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          资料上传规范
+                        </Link>
+                      </Label>
+                    </Checkbox.Content>
+                  </Checkbox>
+
+                  {visibleErrors.agreement ? (
+                    <p className="text-xs text-danger" id="material-upload-agreement-error">
+                      {visibleErrors.agreement}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              <div className="flex shrink-0 justify-end gap-2">
+                <Button type="button" variant="secondary" onPress={handleClosePress}>
+                  关闭
+                </Button>
+                <Button
+                  isDisabled={!canSubmit}
+                  isPending={isSubmitting}
+                  type="submit"
+                  variant="primary"
+                >
+                  {isEditMode ? '保存修改' : isFileUploading ? '文件上传中' : '提交资料'}
+                </Button>
+              </div>
             </Modal.Footer>
           </Form>
         </Modal.Dialog>

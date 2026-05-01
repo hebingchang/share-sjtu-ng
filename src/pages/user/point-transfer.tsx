@@ -25,6 +25,7 @@ import {
   RadioGroup,
   Select,
   Spinner,
+  Tabs,
   TextField,
   type Key,
 } from '@heroui/react'
@@ -523,6 +524,7 @@ export function PointTransferView() {
   const [recordsReloadKey, setRecordsReloadKey] = useState(0)
   const [directionFilter, setDirectionFilter] = useState<PointTransferDirectionFilter>(FILTER_ALL)
   const [statusFilter, setStatusFilter] = useState<PointTransferStatusFilter>(FILTER_ALL)
+  const [activeTab, setActiveTab] = useState<Key>('send')
 
   const preview = useMemo(() => getTransferPreview(amount, feeMode), [amount, feeMode])
   const balance = profile?.points?.points ?? null
@@ -908,293 +910,323 @@ export function PointTransferView() {
         </MotionItem>
 
         <MotionItem>
-          <Card className="min-w-0">
-            <Card.Header>
-              <Card.Title>发起转账</Card.Title>
-              <Card.Description>单笔 2 到 20 积分，发起后等待对方接受。</Card.Description>
-            </Card.Header>
-            <Card.Content>
-              <form
-                className="flex flex-col gap-4"
-                onSubmit={(event) => void submitTransfer(event)}
-              >
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)]">
-                  <TextField
-                    fullWidth
-                    className="w-full"
-                    isInvalid={!!visibleAddressError}
-                    validationBehavior="aria"
-                    value={receiverAddress}
-                    onBlur={() => setAddressTouched(true)}
-                    onChange={setReceiverAddress}
-                  >
-                    <Label>对方地址</Label>
-                    <Input className="font-address" placeholder="0x0123456789abcdef" />
-                    <Description>固定 0x 加 16 位十六进制</Description>
-                    <FieldError>{visibleAddressError}</FieldError>
-                  </TextField>
+          <Tabs selectedKey={activeTab} onSelectionChange={setActiveTab}>
+            <Tabs.ListContainer>
+              <Tabs.List aria-label="积分转账操作">
+                <Tabs.Tab id="send">
+                  发起转账
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab id="pending">
+                  <span className="inline-flex items-center gap-1.5">
+                    待我处理
+                    {pendingTransfers.length > 0 ? (
+                      <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/15 px-1 text-[10px] font-semibold leading-none text-warning tabular-nums">
+                        {pendingTransfers.length}
+                      </span>
+                    ) : null}
+                  </span>
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab id="records">
+                  转账记录
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs.ListContainer>
 
-                  <NumberField
-                    fullWidth
-                    className="w-full"
-                    formatOptions={{ maximumFractionDigits: 0 }}
-                    maxValue={MAX_TRANSFER_AMOUNT}
-                    minValue={MIN_TRANSFER_AMOUNT}
-                    step={1}
-                    value={amount}
-                    onChange={(value) => {
-                      const nextAmount = Math.round(value ?? MIN_TRANSFER_AMOUNT)
-                      setAmount(
-                        Math.min(MAX_TRANSFER_AMOUNT, Math.max(MIN_TRANSFER_AMOUNT, nextAmount)),
-                      )
-                    }}
+            <Tabs.Panel className="pt-4 px-0" id="send">
+              <Card className="min-w-0">
+                <Card.Header>
+                  <Card.Description>单笔 2 到 20 积分，发起后等待对方接受。</Card.Description>
+                </Card.Header>
+                <Card.Content>
+                  <form
+                    className="flex flex-col gap-4"
+                    onSubmit={(event) => void submitTransfer(event)}
                   >
-                    <Label>转账金额</Label>
-                    <NumberField.Group className="w-full">
-                      <NumberField.DecrementButton />
-                      <NumberField.Input className="w-full text-center tabular-nums" />
-                      <NumberField.IncrementButton />
-                    </NumberField.Group>
-                    <Description>
-                      单笔 {MIN_TRANSFER_AMOUNT} 到 {MAX_TRANSFER_AMOUNT} 积分
-                    </Description>
-                  </NumberField>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <p className="text-sm font-medium text-foreground">手续费模式</p>
-                  <RadioGroup
-                    aria-label="手续费模式"
-                    className="grid !mt-0 !gap-2 sm:grid-cols-2 [&_.radio]:!m-0"
-                    value={feeMode}
-                    onChange={(value) => {
-                      if (isPointTransferFeeMode(value)) setFeeMode(value)
-                    }}
-                  >
-                    {FEE_MODE_OPTIONS.map((option) => (
-                      <Radio
-                        key={option.id}
-                        className="group w-full cursor-pointer rounded-lg border border-border/70 bg-surface px-3 py-2 data-[selected=true]:border-accent-soft-hover data-[selected=true]:bg-accent-soft/70"
-                        value={option.id}
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)]">
+                      <TextField
+                        fullWidth
+                        className="w-full"
+                        isInvalid={!!visibleAddressError}
+                        validationBehavior="aria"
+                        value={receiverAddress}
+                        onBlur={() => setAddressTouched(true)}
+                        onChange={setReceiverAddress}
                       >
-                        <Radio.Control>
-                          <Radio.Indicator />
-                        </Radio.Control>
-                        <Radio.Content>
-                          <Label className="text-sm font-medium">{option.title}</Label>
-                          <Description className="text-xs">{option.description}</Description>
-                        </Radio.Content>
-                      </Radio>
-                    ))}
-                  </RadioGroup>
-                </div>
+                        <Label>对方地址</Label>
+                        <Input className="font-address" placeholder="0x0123456789abcdef" />
+                        <Description>固定 0x 加 16 位十六进制</Description>
+                        <FieldError>{visibleAddressError}</FieldError>
+                      </TextField>
 
-                <TransferPreviewPanel
-                  balance={balance}
-                  isBalanceInsufficient={isBalanceInsufficient}
-                  isQuotaExceeded={isQuotaExceeded}
-                  preview={preview}
-                />
+                      <NumberField
+                        fullWidth
+                        className="w-full"
+                        formatOptions={{ maximumFractionDigits: 0 }}
+                        maxValue={MAX_TRANSFER_AMOUNT}
+                        minValue={MIN_TRANSFER_AMOUNT}
+                        step={1}
+                        value={amount}
+                        onChange={(value) => {
+                          const nextAmount = Math.round(value ?? MIN_TRANSFER_AMOUNT)
+                          setAmount(
+                            Math.min(
+                              MAX_TRANSFER_AMOUNT,
+                              Math.max(MIN_TRANSFER_AMOUNT, nextAmount),
+                            ),
+                          )
+                        }}
+                      >
+                        <Label>转账金额</Label>
+                        <NumberField.Group className="w-full">
+                          <NumberField.DecrementButton />
+                          <NumberField.Input className="w-full text-center tabular-nums" />
+                          <NumberField.IncrementButton />
+                        </NumberField.Group>
+                        <Description>
+                          单笔 {MIN_TRANSFER_AMOUNT} 到 {MAX_TRANSFER_AMOUNT} 积分
+                        </Description>
+                      </NumberField>
+                    </div>
 
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-medium text-foreground">手续费模式</p>
+                      <RadioGroup
+                        aria-label="手续费模式"
+                        className="grid !mt-0 !gap-2 sm:grid-cols-2 [&_.radio]:!m-0"
+                        value={feeMode}
+                        onChange={(value) => {
+                          if (isPointTransferFeeMode(value)) setFeeMode(value)
+                        }}
+                      >
+                        {FEE_MODE_OPTIONS.map((option) => (
+                          <Radio
+                            key={option.id}
+                            className="group w-full cursor-pointer rounded-lg border border-border/70 bg-surface px-3 py-2 data-[selected=true]:border-accent-soft-hover data-[selected=true]:bg-accent-soft/70"
+                            value={option.id}
+                          >
+                            <Radio.Control>
+                              <Radio.Indicator />
+                            </Radio.Control>
+                            <Radio.Content>
+                              <Label className="text-sm font-medium">{option.title}</Label>
+                              <Description className="text-xs">{option.description}</Description>
+                            </Radio.Content>
+                          </Radio>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <TransferPreviewPanel
+                      balance={balance}
+                      isBalanceInsufficient={isBalanceInsufficient}
+                      isQuotaExceeded={isQuotaExceeded}
+                      preview={preview}
+                    />
+
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        isDisabled={!canSubmit}
+                        isPending={isSubmitting}
+                        type="submit"
+                        variant="primary"
+                      >
+                        <ArrowRightArrowLeft className="size-4 shrink-0" />
+                        发起转账
+                      </Button>
+                    </div>
+                  </form>
+                </Card.Content>
+              </Card>
+            </Tabs.Panel>
+
+            <Tabs.Panel className="pt-4 px-0" id="pending">
+              <Card className="min-w-0">
+                <Card.Header className="flex-row justify-between">
+                  <Card.Description>当前作为接收方等待确认的积分转账。</Card.Description>
                   <Button
-                    isDisabled={!canSubmit}
-                    isPending={isSubmitting}
-                    type="submit"
-                    variant="primary"
+                    isIconOnly
+                    aria-label="刷新待处理转账"
+                    className="shrink-0"
+                    isDisabled={isOverviewLoading}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                    onPress={refreshTransfers}
                   >
-                    <ArrowRightArrowLeft className="size-4 shrink-0" />
-                    发起转账
+                    <ArrowRotateRight className="size-4" />
                   </Button>
-                </div>
-              </form>
-            </Card.Content>
-          </Card>
-        </MotionItem>
-
-        <MotionItem>
-          <Card className="min-w-0">
-            <Card.Header className="flex-row items-center justify-between gap-3">
-              <div>
-                <Card.Title>待我处理</Card.Title>
-                <Card.Description>当前作为接收方等待确认的积分转账。</Card.Description>
-              </div>
-              <Button
-                isIconOnly
-                aria-label="刷新待处理转账"
-                className="shrink-0"
-                isDisabled={isOverviewLoading}
-                size="sm"
-                type="button"
-                variant="ghost"
-                onPress={refreshTransfers}
-              >
-                <ArrowRotateRight className="size-4" />
-              </Button>
-            </Card.Header>
-            <Card.Content>
-              {isOverviewLoading && pendingTransfers.length === 0 ? (
-                <div className="flex min-h-32 items-center justify-center">
-                  <TransferLoadingBadge label="正在加载待处理转账" />
-                </div>
-              ) : pendingTransfers.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {pendingTransfers.map((transfer) => (
-                    <PendingTransferItem
-                      key={transfer.id}
-                      isBusy={pendingActionId === transfer.id}
-                      transfer={transfer}
-                      onAccept={() => void handlePendingAction(transfer, 'accept')}
-                      onReject={() => void handlePendingAction(transfer, 'reject')}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex min-h-32 flex-col items-center justify-center gap-2 text-center">
-                  <Clock className="size-5 text-muted" />
-                  <p className="text-sm font-medium text-foreground">暂无待处理转账</p>
-                  <p className="text-xs text-muted">收到的待接受转账会显示在这里。</p>
-                </div>
-              )}
-            </Card.Content>
-          </Card>
-        </MotionItem>
-
-        <MotionItem>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted">
-                共 <span className="font-medium tabular-nums text-foreground">{recordsTotal}</span>{' '}
-                条转账记录
-              </p>
-
-              <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
-                <Select
-                  aria-label="按转账方向筛选"
-                  className="w-full sm:w-40"
-                  value={directionFilter}
-                  variant="secondary"
-                  onChange={handleDirectionFilterChange}
-                >
-                  <Label className="sr-only">转账方向</Label>
-                  <Select.Trigger className="h-9 items-center gap-1.5 rounded-full pl-3 text-sm">
-                    <Funnel
-                      aria-hidden
-                      className={cx(
-                        'size-3.5 shrink-0 self-center',
-                        hasDirectionFilter ? 'text-accent' : 'text-muted',
-                      )}
-                    />
-                    <Select.Value className="text-sm">
-                      {({ defaultChildren }) => (
-                        <span className="flex min-w-0 items-center gap-1 text-sm">
-                          <span className="shrink-0 text-muted">方向：</span>
-                          <span className="min-w-0 truncate">{defaultChildren}</span>
-                        </span>
-                      )}
-                    </Select.Value>
-                    <Select.Indicator />
-                  </Select.Trigger>
-                  <Select.Popover>
-                    <ListBox>
-                      {DIRECTION_FILTER_OPTIONS.map((option) => (
-                        <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
-                          {option.label}
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
+                </Card.Header>
+                <Card.Content>
+                  {isOverviewLoading && pendingTransfers.length === 0 ? (
+                    <div className="flex min-h-32 items-center justify-center">
+                      <TransferLoadingBadge label="正在加载待处理转账" />
+                    </div>
+                  ) : pendingTransfers.length > 0 ? (
+                    <div className="flex flex-col gap-3">
+                      {pendingTransfers.map((transfer) => (
+                        <PendingTransferItem
+                          key={transfer.id}
+                          isBusy={pendingActionId === transfer.id}
+                          transfer={transfer}
+                          onAccept={() => void handlePendingAction(transfer, 'accept')}
+                          onReject={() => void handlePendingAction(transfer, 'reject')}
+                        />
                       ))}
-                    </ListBox>
-                  </Select.Popover>
-                </Select>
-
-                <Select
-                  aria-label="按转账状态筛选"
-                  className="w-full sm:w-40"
-                  value={statusFilter}
-                  variant="secondary"
-                  onChange={handleStatusFilterChange}
-                >
-                  <Label className="sr-only">转账状态</Label>
-                  <Select.Trigger className="h-9 items-center gap-1.5 rounded-full pl-3 text-sm">
-                    <Funnel
-                      aria-hidden
-                      className={cx(
-                        'size-3.5 shrink-0 self-center',
-                        hasStatusFilter ? 'text-accent' : 'text-muted',
-                      )}
-                    />
-                    <Select.Value className="text-sm">
-                      {({ defaultChildren }) => (
-                        <span className="flex min-w-0 items-center gap-1 text-sm">
-                          <span className="shrink-0 text-muted">状态：</span>
-                          <span className="min-w-0 truncate">{defaultChildren}</span>
-                        </span>
-                      )}
-                    </Select.Value>
-                    <Select.Indicator />
-                  </Select.Trigger>
-                  <Select.Popover>
-                    <ListBox>
-                      {STATUS_FILTER_OPTIONS.map((option) => (
-                        <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
-                          {option.label}
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                      ))}
-                    </ListBox>
-                  </Select.Popover>
-                </Select>
-              </div>
-            </div>
-
-            {recordsError ? (
-              <ErrorPanel
-                actionLabel="重试"
-                message={recordsError}
-                onAction={() => setRecordsReloadKey((key) => key + 1)}
-              />
-            ) : shouldShowRecordsTable ? (
-              <div className="relative">
-                <DataGrid
-                  aria-label="积分转账记录"
-                  className={cx(
-                    isRecordsLoading && rows.length > 0 && '[&_.table__body]:opacity-0',
+                    </div>
+                  ) : (
+                    <div className="flex min-h-32 flex-col items-center justify-center gap-2 text-center">
+                      <Clock className="size-5 text-muted" />
+                      <p className="text-sm font-medium text-foreground">暂无待处理转账</p>
+                      <p className="text-xs text-muted">收到的待接受转账会显示在这里。</p>
+                    </div>
                   )}
-                  columns={columns}
-                  contentClassName="min-w-[760px] table-fixed"
-                  data={rows}
-                  getRowId={(record) => record.id}
-                  renderEmptyState={() => <RecordsTableLoadingState />}
-                  variant="primary"
-                />
-                {isRecordsLoading && rows.length > 0 ? (
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                    <TransferLoadingBadge label="正在加载转账记录" />
+                </Card.Content>
+              </Card>
+            </Tabs.Panel>
+
+            <Tabs.Panel className="pt-4 px-0" id="records">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted">
+                    共{' '}
+                    <span className="font-medium tabular-nums text-foreground">
+                      {recordsTotal}
+                    </span>{' '}
+                    条转账记录
+                  </p>
+
+                  <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
+                    <Select
+                      aria-label="按转账方向筛选"
+                      className="w-full sm:w-40"
+                      value={directionFilter}
+                      variant="secondary"
+                      onChange={handleDirectionFilterChange}
+                    >
+                      <Label className="sr-only">转账方向</Label>
+                      <Select.Trigger className="h-9 items-center gap-1.5 rounded-full pl-3 text-sm">
+                        <Funnel
+                          aria-hidden
+                          className={cx(
+                            'size-3.5 shrink-0 self-center',
+                            hasDirectionFilter ? 'text-accent' : 'text-muted',
+                          )}
+                        />
+                        <Select.Value className="text-sm">
+                          {({ defaultChildren }) => (
+                            <span className="flex min-w-0 items-center gap-1 text-sm">
+                              <span className="shrink-0 text-muted">方向：</span>
+                              <span className="min-w-0 truncate">{defaultChildren}</span>
+                            </span>
+                          )}
+                        </Select.Value>
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {DIRECTION_FILTER_OPTIONS.map((option) => (
+                            <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                              {option.label}
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+
+                    <Select
+                      aria-label="按转账状态筛选"
+                      className="w-full sm:w-40"
+                      value={statusFilter}
+                      variant="secondary"
+                      onChange={handleStatusFilterChange}
+                    >
+                      <Label className="sr-only">转账状态</Label>
+                      <Select.Trigger className="h-9 items-center gap-1.5 rounded-full pl-3 text-sm">
+                        <Funnel
+                          aria-hidden
+                          className={cx(
+                            'size-3.5 shrink-0 self-center',
+                            hasStatusFilter ? 'text-accent' : 'text-muted',
+                          )}
+                        />
+                        <Select.Value className="text-sm">
+                          {({ defaultChildren }) => (
+                            <span className="flex min-w-0 items-center gap-1 text-sm">
+                              <span className="shrink-0 text-muted">状态：</span>
+                              <span className="min-w-0 truncate">{defaultChildren}</span>
+                            </span>
+                          )}
+                        </Select.Value>
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {STATUS_FILTER_OPTIONS.map((option) => (
+                            <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                              {option.label}
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
                   </div>
+                </div>
+
+                {recordsError ? (
+                  <ErrorPanel
+                    actionLabel="重试"
+                    message={recordsError}
+                    onAction={() => setRecordsReloadKey((key) => key + 1)}
+                  />
+                ) : shouldShowRecordsTable ? (
+                  <div className="relative">
+                    <DataGrid
+                      aria-label="积分转账记录"
+                      className={cx(
+                        isRecordsLoading && rows.length > 0 && '[&_.table__body]:opacity-0',
+                      )}
+                      columns={columns}
+                      contentClassName="min-w-[760px] table-fixed"
+                      data={rows}
+                      getRowId={(record) => record.id}
+                      renderEmptyState={() => <RecordsTableLoadingState />}
+                      variant="primary"
+                    />
+                    {isRecordsLoading && rows.length > 0 ? (
+                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                        <TransferLoadingBadge label="正在加载转账记录" />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border/70">
+                    <div className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+                      <CircleDollar className="size-5 text-muted" />
+                      <p className="text-sm font-medium text-foreground">暂无转账记录</p>
+                      <p className="text-xs text-muted">符合当前筛选条件的记录会显示在这里。</p>
+                    </div>
+                  </div>
+                )}
+
+                {recordsTotalPages > 1 ? (
+                  <UserPagination
+                    isDisabled={isRecordsLoading}
+                    label="积分转账"
+                    page={recordsPage}
+                    pageSize={POINT_TRANSFER_RECORDS_PAGE_SIZE}
+                    total={recordsTotal}
+                    totalPages={recordsTotalPages}
+                    onChange={handleRecordsPageChange}
+                  />
                 ) : null}
               </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border/70">
-                <div className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
-                  <CircleDollar className="size-5 text-muted" />
-                  <p className="text-sm font-medium text-foreground">暂无转账记录</p>
-                  <p className="text-xs text-muted">符合当前筛选条件的记录会显示在这里。</p>
-                </div>
-              </div>
-            )}
-
-            {recordsTotalPages > 1 ? (
-              <UserPagination
-                isDisabled={isRecordsLoading}
-                label="积分转账"
-                page={recordsPage}
-                pageSize={POINT_TRANSFER_RECORDS_PAGE_SIZE}
-                total={recordsTotal}
-                totalPages={recordsTotalPages}
-                onChange={handleRecordsPageChange}
-              />
-            ) : null}
-          </div>
+            </Tabs.Panel>
+          </Tabs>
         </MotionItem>
       </MotionStagger>
 

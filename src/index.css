@@ -69,6 +69,74 @@ body {
   font-family: Consolas, "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", Monaco, "Ubuntu Mono", monospace;
 }
 
+.ios-top-blur {
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  height: 6rem;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--background) 68%, transparent) 0%,
+    color-mix(in oklab, var(--background) 52%, transparent) 30%,
+    color-mix(in oklab, var(--background) 32%, transparent) 58%,
+    color-mix(in oklab, var(--background) 12%, transparent) 82%,
+    transparent 100%
+  );
+  overflow: hidden;
+}
+
+.ios-top-blur::before,
+.ios-top-blur::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.ios-top-blur::before {
+  background: color-mix(in oklab, var(--background) 1%, transparent);
+  -webkit-backdrop-filter: blur(42px) saturate(1.08);
+  backdrop-filter: blur(42px) saturate(1.08);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.9) 36%,
+    rgba(0, 0, 0, 0.62) 62%,
+    rgba(0, 0, 0, 0.22) 86%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.9) 36%,
+    rgba(0, 0, 0, 0.62) 62%,
+    rgba(0, 0, 0, 0.22) 86%,
+    transparent 100%
+  );
+}
+
+.ios-top-blur::after {
+  background: color-mix(in oklab, var(--background) 1%, transparent);
+  -webkit-backdrop-filter: blur(90px) saturate(1.05);
+  backdrop-filter: blur(90px) saturate(1.05);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.82) 28%,
+    rgba(0, 0, 0, 0.52) 56%,
+    rgba(0, 0, 0, 0.18) 84%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.82) 28%,
+    rgba(0, 0, 0, 0.52) 56%,
+    rgba(0, 0, 0, 0.18) 84%,
+    transparent 100%
+  );
+}
+
 .soft-glow-panel {
   background-image:
     radial-gradient(

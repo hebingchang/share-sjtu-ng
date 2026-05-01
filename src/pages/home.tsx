@@ -397,8 +397,8 @@ function RecentPurchasesCard({
         <div className="flex min-w-0 gap-3">
           <ShoppingCart className="mt-0.5 size-5 shrink-0 text-muted" />
           <div className="min-w-0">
-            <Card.Title>最近购买</Card.Title>
-            <Card.Description>最新购买的资料。</Card.Description>
+            <Card.Title>最近兑换</Card.Title>
+            <Card.Description>最新兑换的资料。</Card.Description>
           </div>
         </div>
       </Card.Header>
@@ -412,7 +412,7 @@ function RecentPurchasesCard({
               className="flex items-center gap-2 rounded-xl border border-dashed border-default px-3 py-3 text-xs text-muted"
             >
               <Spinner size="sm" />
-              正在加载购买记录
+              正在加载兑换记录
             </motion.div>
           ) : error ? (
             <motion.div
@@ -440,9 +440,9 @@ function RecentPurchasesCard({
                   <EmptyState.Media variant="icon">
                     <ShoppingCart />
                   </EmptyState.Media>
-                  <EmptyState.Title>还没有购买资料</EmptyState.Title>
+                  <EmptyState.Title>还没有兑换资料</EmptyState.Title>
                   <EmptyState.Description>
-                    购买后的资料会出现在这里。
+                    兑换后的资料会出现在这里。
                   </EmptyState.Description>
                 </EmptyState.Header>
               </EmptyState>
@@ -576,7 +576,7 @@ export default function HomePage() {
       } catch (err) {
         if (isAbortError(err)) return
         setPurchases([])
-        setPurchaseError(err instanceof Error ? err.message : '获取最近购买失败')
+        setPurchaseError(err instanceof Error ? err.message : '获取最近兑换失败')
       } finally {
         if (!signal?.aborted) {
           setPurchasesLoading(false)

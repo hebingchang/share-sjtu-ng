@@ -30,6 +30,10 @@ interface NicknameSetupModalProps {
   onOpenChange?: (isOpen: boolean) => void
 }
 
+function getWelcomeName(profile: Profile): string {
+  return profile.nickname?.trim() || profile.name?.trim() || profile.account?.trim() || '同学'
+}
+
 export default function NicknameSetupModal({
   initialNickname,
   isOpen,
@@ -41,6 +45,7 @@ export default function NicknameSetupModal({
   const [nickname, setNickname] = useState(() => initialNickname?.trim() ?? '')
   const [error, setError] = useState<string | null>(null)
   const [isConfirmOpen, setConfirmOpen] = useState(false)
+  const [isSkipConfirmOpen, setSkipConfirmOpen] = useState(false)
   const [isSubmitting, setSubmitting] = useState(false)
   const [step, setStep] = useState<Step>('form')
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null)
@@ -64,6 +69,8 @@ export default function NicknameSetupModal({
       setStep('form')
       setNickname('')
       setError(null)
+      setConfirmOpen(false)
+      setSkipConfirmOpen(false)
       setSubmitting(false)
       setPendingProfile(null)
       setWelcomeName('')
@@ -110,6 +117,23 @@ export default function NicknameSetupModal({
     tooLong,
     trimmed,
   ])
+
+  const skipNickname = useCallback(async () => {
+    if (!token || isEditMode || isSubmitting) return
+
+    setSubmitting(true)
+    setSkipConfirmOpen(false)
+    setError(null)
+    try {
+      const profile = await updateUserProfile({ nickname: null, token })
+      setWelcomeName(getWelcomeName(profile))
+      setPendingProfile(profile)
+      setStep('welcome')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '暂时无法跳过昵称设置')
+      setSubmitting(false)
+    }
+  }, [isEditMode, isSubmitting, token])
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -213,16 +237,29 @@ export default function NicknameSetupModal({
                           </Description>
                         )}
                       </TextField>
-                      <Button
-                        fullWidth
-                        className="mt-2"
-                        isDisabled={!trimmed || tooLong || isUnchanged}
-                        isPending={isSubmitting}
-                        type="submit"
-                        variant="primary"
-                      >
-                        {isEditMode ? '保存修改' : '保存昵称'}
-                      </Button>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {!isEditMode ? (
+                          <Button
+                            fullWidth
+                            isDisabled={isSubmitting}
+                            type="button"
+                            variant="tertiary"
+                            onPress={() => setSkipConfirmOpen(true)}
+                          >
+                            跳过
+                          </Button>
+                        ) : null}
+                        <Button
+                          fullWidth
+                          className={isEditMode ? 'sm:col-span-2' : undefined}
+                          isDisabled={!trimmed || tooLong || isUnchanged}
+                          isPending={isSubmitting}
+                          type="submit"
+                          variant="primary"
+                        >
+                          {isEditMode ? '保存修改' : '保存昵称'}
+                        </Button>
+                      </div>
                     </Form>
                   </Modal.Body>
                 </motion.div>
@@ -258,6 +295,42 @@ export default function NicknameSetupModal({
               </Button>
               <Button isPending={isSubmitting} variant="primary" onPress={() => void saveNickname()}>
                 确认保存
+              </Button>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
+
+      <AlertDialog.Backdrop isOpen={isSkipConfirmOpen} onOpenChange={setSkipConfirmOpen}>
+        <AlertDialog.Container placement="center">
+          <AlertDialog.Dialog className="sm:max-w-[430px]">
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="warning" />
+              <AlertDialog.Heading>暂不设置昵称？</AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body>
+              <div className="flex flex-col gap-3 text-sm leading-6 text-muted">
+                <p>
+                  不设置昵称时，你仍可以浏览和兑换资料，但部分公开互动会受限。
+                </p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>不能发布资料评论或回复。</li>
+                  <li>上传资料时只能匿名上传。</li>
+                  <li>已有资料不能切换为非匿名展示。</li>
+                </ul>
+                <p>之后可以在用户中心设置昵称。是否继续跳过？</p>
+              </div>
+            </AlertDialog.Body>
+            <AlertDialog.Footer>
+              <Button slot="close" variant="tertiary">
+                返回设置
+              </Button>
+              <Button
+                isPending={isSubmitting}
+                variant="primary"
+                onPress={() => void skipNickname()}
+              >
+                继续跳过
               </Button>
             </AlertDialog.Footer>
           </AlertDialog.Dialog>

@@ -1,15 +1,7 @@
 import { ArrowRightFromSquare, FilePlus, Moon, PersonGear, Sun } from '@gravity-ui/icons'
-import {
-  Button,
-  Chip,
-  Dropdown,
-  type Key,
-  Label,
-  Link,
-  Separator,
-} from '@heroui/react'
+import { Button, Chip, Dropdown, type Key, Label, Link, Separator } from '@heroui/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/use-auth'
 import { DialogProvider } from '../dialog/provider'
 import { useTheme } from '../theme/use-theme'
@@ -43,6 +35,7 @@ const FOOTER_LINK_CLASS =
 export default function Layout({ children }: { children: ReactNode }) {
   const { token, profile, logout } = useAuth()
   const { theme, toggle: toggleTheme } = useTheme()
+  const location = useLocation()
   const navigate = useNavigate()
   const [isUploadModalOpen, setUploadModalOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(
@@ -52,6 +45,13 @@ export default function Layout({ children }: { children: ReactNode }) {
   const currentYear = new Date().getFullYear()
   const userTypeLabel = profile?.type ? (USER_TYPE_LABELS[profile.type] ?? profile.type) : null
   const displayName = profile?.nickname?.trim() || profile?.name
+  const isLegalRoute =
+    location.pathname === '/terms' ||
+    location.pathname === '/upload-rules' ||
+    location.pathname === '/privacy'
+  const canShowContent = Boolean(token) || isLegalRoute
+  const shouldShowNicknameSetup =
+    Boolean(token) && profile?.nickname === null && profile.nickname_updated_at === null
 
   useEffect(() => {
     let ticking = false
@@ -93,8 +93,9 @@ export default function Layout({ children }: { children: ReactNode }) {
     <DialogProvider>
       <div className="flex min-h-dvh flex-col">
         <header className="sticky top-0 z-40 flex h-24 shrink-0 items-start justify-center px-6 py-4 max-md:px-4">
+          {/*<div aria-hidden="true" className="ios-top-blur" />*/}
           <div
-            className={`flex w-full items-center justify-between gap-4 transition-all duration-300 ease-out ${
+            className={`relative z-10 flex w-full items-center justify-between gap-4 transition-all duration-300 ease-out ${
               isScrolled
                 ? 'max-w-3xl rounded-full bg-surface-secondary/80 px-6 py-3 pr-4 shadow-[inset_0_0_0_1px_var(--border)] backdrop-blur-lg'
                 : 'max-w-5xl px-0 py-0'
@@ -111,11 +112,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 variant="ghost"
                 onPress={toggleTheme}
               >
-                {theme === 'dark' ? (
-                  <Sun className="size-5" />
-                ) : (
-                  <Moon className="size-5" />
-                )}
+                {theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
               </Button>
 
               {token ? (
@@ -168,10 +165,10 @@ export default function Layout({ children }: { children: ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
-          {token ? children : null}
+          {canShowContent ? children : null}
         </main>
 
-        {token ? (
+        {canShowContent ? (
           <footer className="mx-auto w-full max-w-5xl px-4 pb-8 text-center text-xs leading-6 text-muted sm:px-6 lg:px-8">
             <p>
               ©{currentYear}{' '}
@@ -202,6 +199,18 @@ export default function Layout({ children }: { children: ReactNode }) {
               <span aria-hidden className="px-1 text-muted/60">
                 ·
               </span>
+              <Link className={FOOTER_LINK_CLASS} href="/terms">
+                服务条款
+              </Link>
+              <span aria-hidden className="px-1 text-muted/60">
+                ·
+              </span>
+              <Link className={FOOTER_LINK_CLASS} href="/privacy">
+                隐私政策
+              </Link>
+              <span aria-hidden className="px-1 text-muted/60">
+                ·
+              </span>
               <Link
                 className={FOOTER_LINK_CLASS}
                 href="https://beian.miit.gov.cn/"
@@ -214,7 +223,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </footer>
         ) : null}
 
-        <LoginModal isOpen={!token} />
+        <LoginModal isOpen={!token && !isLegalRoute} />
         {token ? (
           <MaterialUploadModal
             isOpen={isUploadModalOpen}
@@ -222,7 +231,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             onClose={() => setUploadModalOpen(false)}
           />
         ) : null}
-        <NicknameSetupModal isOpen={!!token && !!profile && !profile.nickname?.trim()} />
+        <NicknameSetupModal isOpen={shouldShowNicknameSetup} />
       </div>
     </DialogProvider>
   )

@@ -80,17 +80,21 @@ export async function updateUserProfile({
   token,
 }: {
   avatar?: Blob
-  nickname: string
+  nickname?: string | null
   signal?: AbortSignal
   token: string
 }): Promise<Profile> {
-  const body = avatar ? new FormData() : JSON.stringify({ nickname })
+  const body = avatar
+    ? new FormData()
+    : JSON.stringify(nickname === undefined ? {} : { nickname })
   const headers: Record<string, string> = {
     Auth: token,
   }
 
   if (avatar && body instanceof FormData) {
-    body.append('nickname', nickname)
+    if (nickname !== undefined) {
+      body.append('nickname', nickname ?? '')
+    }
     body.append('avatar', avatar, 'avatar.png')
   } else {
     headers['Content-Type'] = 'application/json'
@@ -256,7 +260,7 @@ export async function getUserPurchaseMaterials({
     signal,
   })
 
-  return readPayload<PaginatedPurchases>(response, '获取最近购买失败')
+  return readPayload<PaginatedPurchases>(response, '获取最近兑换失败')
 }
 
 export async function getUserUploadMaterials({

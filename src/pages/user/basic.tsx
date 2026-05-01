@@ -141,7 +141,7 @@ export function BasicInfoView() {
     if (!profile) return
 
     const nextUpdateTime = getNextNicknameUpdateTime(profile.nickname_updated_at)
-    if (nextUpdateTime && Date.now() < nextUpdateTime.getTime()) {
+    if (profile.nickname !== null && nextUpdateTime && Date.now() < nextUpdateTime.getTime()) {
       showDialog({
         description: `昵称每 30 天只能修改 1 次，${formatDateTime(
           nextUpdateTime.toISOString(),

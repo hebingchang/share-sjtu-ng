@@ -5,6 +5,7 @@ import InitialLoader from './components/initial-loader'
 import Layout from './components/layout'
 import CoursePage from './pages/course'
 import HomePage from './pages/home'
+import { PrivacyPage, TermsPage, UploadRulesPage } from './pages/legal'
 import OAuthCallbackPage from './pages/oauth-callback'
 import SearchPage from './pages/search'
 import UserPage from './pages/user'
@@ -31,15 +32,15 @@ function AnimatedRoutes() {
         transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
       >
         <Routes location={location}>
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/upload-rules" element={<UploadRulesPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/user/*" element={<UserPage />} />
           <Route path="/course/:id" element={<CoursePage />} />
           <Route path="/course/:id/material/:materialId" element={<CoursePage />} />
           <Route path="/course/:id/class/:classId" element={<CoursePage />} />
-          <Route
-            path="/course/:id/class/:classId/material/:materialId"
-            element={<CoursePage />}
-          />
+          <Route path="/course/:id/class/:classId/material/:materialId" element={<CoursePage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </motion.div>

@@ -3,6 +3,7 @@ import {
   ChevronDown,
   CircleDollar,
   CircleExclamation,
+  CircleInfo,
   CircleXmark,
   Comments,
   EllipsisVertical,
@@ -44,6 +45,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useNavigate } from 'react-router'
 import {
   downloadMaterial,
   deleteMaterialComment,
@@ -77,6 +79,34 @@ const COMMENT_MAX_LENGTH = 1000
 const COMMENT_COLLAPSED_HEIGHT = 128
 const detailSurfaceBg =
   'bg-surface-secondary dark:bg-[color-mix(in_srgb,var(--surface-secondary)_35%,var(--background))]'
+
+const COMMENT_GUIDELINES = [
+  {
+    title: '围绕资料本身',
+    description:
+      '请优先分享资料内容、适用课程、版本差异、使用体验和补充说明，让后来者能据此判断是否需要兑换。',
+  },
+  {
+    title: '尊重师生与同学',
+    description:
+      '可以讨论观点和事实，不做人身攻击、讽刺辱骂、地域或身份歧视，也不挑衅引战、骚扰他人。',
+  },
+  {
+    title: '保护个人信息',
+    description:
+      '不要公开学号、手机号、邮箱、宿舍、课堂截图中的个人信息，引用他人经历时请做必要匿名处理。',
+  },
+  {
+    title: '遵守资料边界',
+    description:
+      '不索要或传播未授权资料、付费资源、考试保密材料、答案解析等可能侵犯权益或违反课程要求的内容。',
+  },
+  {
+    title: '保持讨论可读',
+    description:
+      '避免刷屏、广告、交易导流、重复灌水和无关内容；发现资料问题请说明依据，方便上传者或平台处理。',
+  },
+]
 
 const SORT_OPTIONS: { id: MaterialCommentSort; label: string }[] = [
   { id: 'old', label: '最早' },
@@ -465,7 +495,7 @@ function MaterialDetailHeader({ material }: { material: Material }) {
               </Chip>
             ) : material.has_purchased ? (
               <Chip color="success" size="sm" variant="soft">
-                <Chip.Label>已购买</Chip.Label>
+                <Chip.Label>已兑换</Chip.Label>
               </Chip>
             ) : null}
           </div>
@@ -506,7 +536,7 @@ function MaterialOverview({ material }: { material: Material }) {
             </p>
           </div>
           <span className="hidden shrink-0 rounded-full border border-border/60 bg-background px-3 py-1 text-xs font-medium text-muted shadow-sm sm:inline-flex">
-            {material.purchase_count} 次购买
+            {material.purchase_count} 次兑换
           </span>
         </div>
       </div>
@@ -594,14 +624,14 @@ function ActionZone({
       setPurchaseConfirmOpen(false)
       showDialog({
         status: 'success',
-        title: '购买成功',
+        title: '兑换成功',
         description: '您可以下载该资料了',
       })
     } catch (err) {
       setPurchaseConfirmOpen(false)
       showDialog({
         status: 'danger',
-        title: '购买失败',
+        title: '兑换失败',
         description: err instanceof Error ? err.message : '请稍后再试',
       })
     } finally {
@@ -670,15 +700,15 @@ function ActionZone({
     }
   }
 
-  const heading = isMine ? '上传者' : purchased ? '已购买' : material.points === 0 ? '免费资料' : '购买该资料'
+  const heading = isMine ? '上传者' : purchased ? '已兑换' : material.points === 0 ? '免费资料' : '兑换该资料'
   const description = isMine
     ? '您是该资料的上传者，可直接下载。'
     : purchased
     ? '您已拥有该资料，可直接下载。'
     : material.points === 0
     ? '该资料免费分享，兑换后即可下载。'
-    : '购买后即可下载。在购买后如无特殊情况积分不予退还。'
-  const ratingUnavailableTitle = isMine ? '自己的上传不可评价' : '购买后可评价'
+    : '兑换后即可下载。如无特殊情况，在兑换后积分无法退还。'
+  const ratingUnavailableTitle = isMine ? '自己的上传不可评价' : '兑换后可评价'
   const statusKey = isMine
     ? 'mine'
     : purchased
@@ -708,19 +738,21 @@ function ActionZone({
           transition={{ duration: 0.24, ease: easing }}
           className="overflow-hidden"
         >
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col rounded-xl bg-warning-soft px-3.5 py-2 text-warning-soft-foreground">
-              <span className="text-xs font-medium opacity-80">需要积分</span>
-              <span className="mt-0.5 text-lg font-semibold leading-tight tabular-nums">
-                {material.points}
-              </span>
-            </div>
-            <div className="flex flex-col items-start rounded-xl bg-surface-secondary px-3.5 py-2">
-              <span className="text-xs font-medium text-muted">当前积分</span>
-              <span className="mt-0.5 text-lg font-semibold leading-tight text-foreground">
+          <div className="flex items-center justify-between gap-3 px-1 text-xs">
+            <span className="font-medium text-muted">当前积分</span>
+            <span className="flex items-center gap-1.5 leading-none tabular-nums">
+              <span className="text-sm font-semibold leading-none text-foreground">
                 <AnimatedNumber value={userPoints} />
               </span>
-            </div>
+              {!insufficient ? (
+                <span className="flex items-center gap-1 leading-none text-muted">
+                  <span aria-hidden className="leading-none">
+                    →
+                  </span>
+                  <AnimatedNumber value={userPoints - material.points} />
+                </span>
+              ) : null}
+            </span>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -761,7 +793,7 @@ function ActionZone({
             onPress={() => setPurchaseConfirmOpen(true)}
           >
             <ShoppingCart className="size-4" />
-            {material.points === 0 ? '免费兑换' : `购买 · ${material.points} 积分`}
+            {material.points === 0 ? '免费兑换' : `兑换 · ${material.points} 积分`}
           </Button>
         </motion.div>
       )}
@@ -777,10 +809,10 @@ function ActionZone({
           animate={{ opacity: 1, height: 'auto', y: 0 }}
           exit={{ opacity: 0, height: 0, y: -4 }}
           transition={{ duration: 0.22, ease: easing }}
-          className="-mt-1 flex items-start gap-1.5 overflow-hidden rounded-xl bg-warning-soft/70 px-3 py-2 text-xs leading-relaxed text-warning-soft-foreground"
+          className="-mt-1 flex items-start gap-1.5 overflow-hidden px-1 text-xs leading-relaxed text-warning-soft-foreground"
         >
           <CircleExclamation className="mt-0.5 size-3.5 shrink-0" />
-          积分不足，还差 {material.points - userPoints} 积分。可通过分享资料或参与活动获取积分。
+          积分不足，还差 {material.points - userPoints} 积分。可通过分享资料、从合作网站兑换等途径获取积分。
         </motion.p>
       ) : null}
     </AnimatePresence>
@@ -841,6 +873,7 @@ function ActionZone({
   const dialogs = (
     <>
       <MaterialReportDialog
+        key={`${material.id}:${purchased ? 'purchased' : 'not-purchased'}`}
         isOpen={isReportOpen}
         materialId={material.id}
         onOpenChange={setReportOpen}
@@ -855,19 +888,19 @@ function ActionZone({
             <AlertDialog.Header>
               <AlertDialog.Icon status="accent" />
               <AlertDialog.Heading>
-                {material.points === 0 ? '免费兑换该资料？' : '确认购买该资料？'}
+                {material.points === 0 ? '免费兑换该资料？' : '确认兑换该资料？'}
               </AlertDialog.Heading>
             </AlertDialog.Header>
             <AlertDialog.Body>
               <p className="text-sm leading-6">
                 {material.points === 0
                   ? '该资料无需积分，兑换后即可下载。'
-                  : `本次购买将扣除 ${material.points} 积分（购买后剩余 ${
+                  : `本次兑换将扣除 ${material.points} 积分（兑换后剩余 ${
                       userPoints - material.points
                     } 积分）。`}
               </p>
               <p className="mt-2 text-xs leading-5">
-                购买后您即可下载并对资料进行评价。
+                兑换后您即可下载并对资料进行评价。
               </p>
             </AlertDialog.Body>
             <AlertDialog.Footer>
@@ -879,7 +912,7 @@ function ActionZone({
                 variant="primary"
                 onPress={handlePurchase}
               >
-                确认购买
+                确认兑换
               </Button>
             </AlertDialog.Footer>
           </AlertDialog.Dialog>
@@ -891,7 +924,7 @@ function ActionZone({
   if (floating) {
     return (
       <section
-        aria-label="购买与下载"
+        aria-label="兑换与下载"
         className="mx-auto flex w-full max-w-3xl flex-col gap-2.5"
       >
         {pointsInfo}
@@ -907,7 +940,7 @@ function ActionZone({
 
   return (
     <Card
-      aria-label="购买与下载"
+      aria-label="兑换与下载"
       className="overflow-hidden border border-border/70 bg-background p-0 shadow-sm shadow-black/5"
       role="region"
       variant="secondary"
@@ -976,7 +1009,7 @@ function MaterialReportDialog({
   useEffect(() => {
     if (!isOpen || !token || reasons.length > 0) return
     const controller = new AbortController()
-    getMaterialReportReasons({ token, signal: controller.signal })
+    getMaterialReportReasons({ id: materialId, token, signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return
         setReasons(data)
@@ -996,7 +1029,7 @@ function MaterialReportDialog({
         setLoadingReasons(false)
       })
     return () => controller.abort()
-  }, [isOpen, token, reasons.length, onOpenChange, showDialog])
+  }, [isOpen, materialId, token, reasons.length, onOpenChange, showDialog])
 
   const handleSubmit = async () => {
     if (!token || !reason) return
@@ -1113,6 +1146,83 @@ interface ReplyTarget {
   nickname: string
 }
 
+function CommentGuidelinesButton({
+  compact = false,
+  onPress,
+}: {
+  compact?: boolean
+  onPress: () => void
+}) {
+  return (
+    <Button
+      aria-label="查看评论发言规范"
+      className="h-8 shrink-0 rounded-full border border-border/60 bg-background px-2.5 text-xs font-medium text-muted shadow-sm hover:text-foreground sm:px-3"
+      size="sm"
+      variant="ghost"
+      onPress={onPress}
+    >
+      <CircleInfo className="size-3.5" />
+      <span className={compact ? 'hidden min-[380px]:inline' : undefined}>
+        发言规范
+      </span>
+    </Button>
+  )
+}
+
+function CommentGuidelinesDialog({
+  isOpen,
+  onOpenChange,
+}: {
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Modal.Backdrop isOpen={isOpen} variant="blur" onOpenChange={onOpenChange}>
+      <Modal.Container
+        className="px-4 py-4 sm:px-6"
+        placement="center"
+        scroll="inside"
+        size="sm"
+      >
+        <Modal.Dialog className="flex max-h-[min(720px,calc(100dvh-2rem))] flex-col overflow-hidden sm:max-w-lg">
+          <Modal.CloseTrigger />
+          <Modal.Header>
+            <Modal.Icon className="bg-accent-soft text-accent-soft-foreground">
+              <CircleInfo className="size-5" />
+            </Modal.Icon>
+            <div>
+              <Modal.Heading>资料评论区发言规范</Modal.Heading>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                评论会公开展示，请让每条发言都对课程资料判断有帮助。
+              </p>
+            </div>
+          </Modal.Header>
+          <Modal.Body>
+            <ol>
+              {COMMENT_GUIDELINES.map((item) => (
+                <li key={item.title} className="py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted">{item.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="py-3 text-sm leading-6 text-muted">
+              违反规范的评论可能被折叠、删除或限制互动；遇到侵权、隐私泄露或骚扰内容，请使用举报入口。
+            </p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button slot="close" variant="secondary">
+              知道了
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
+  )
+}
+
 function CommentsSection({
   materialId,
   uploaderUserId,
@@ -1124,6 +1234,7 @@ function CommentsSection({
 }) {
   const { token, profile } = useAuth()
   const { showDialog } = useDialog()
+  const navigate = useNavigate()
   const [comments, setComments] = useState<MaterialComment[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -1133,12 +1244,16 @@ function CommentsSection({
   const [content, setContent] = useState('')
   const [isPosting, setPosting] = useState(false)
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null)
+  const [isGuidelinesOpen, setGuidelinesOpen] = useState(false)
   const [refreshIndex, setRefreshIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const commentElementsRef = useRef(new Map<number, HTMLElement>())
   const pendingScrollCommentIdRef = useRef<number | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(total / COMMENTS_PAGE_SIZE))
+  const hasNickname = Boolean(profile?.nickname?.trim())
+  const needsNickname = Boolean(token && profile && !hasNickname)
+  const canPostComment = Boolean(token && profile && hasNickname)
 
   const fetchKey = `${materialId}|${sort}|${page}|${refreshIndex}`
   const [trackedFetchKey, setTrackedFetchKey] = useState(fetchKey)
@@ -1205,18 +1320,38 @@ function CommentsSection({
     requestAnimationFrame(() => inputRef.current?.focus())
   }, [])
 
+  const showNicknameRequired = useCallback(() => {
+    showDialog({
+      status: 'warning',
+      title: '需要先设置昵称',
+      description: '设置昵称后才能发布评论或回复。',
+    })
+  }, [showDialog])
+
+  const openNicknameSettings = useCallback(() => {
+    navigate('/user/basic')
+  }, [navigate])
+
   const handleStartReply = useCallback(
     (target: ReplyTarget) => {
+      if (!hasNickname) {
+        showNicknameRequired()
+        return
+      }
       setReplyTarget(target)
       focusInput()
     },
-    [focusInput],
+    [focusInput, hasNickname, showNicknameRequired],
   )
 
   const cancelReply = useCallback(() => setReplyTarget(null), [])
 
   const handlePost = async () => {
     if (!token) return
+    if (!hasNickname) {
+      showNicknameRequired()
+      return
+    }
     const trimmed = content.trim()
     if (!trimmed) return
     if (trimmed.length > COMMENT_MAX_LENGTH) {
@@ -1289,6 +1424,8 @@ function CommentsSection({
 
   const placeholder = replyTarget
     ? '写下回复…'
+    : needsNickname
+    ? '设置昵称后参与评论'
     : profile
     ? '分享您对该资料的看法…'
     : '请先登录后参与评论'
@@ -1332,14 +1469,24 @@ function CommentsSection({
   const commentInput = (
     <CommentInput
       content={content}
+      disabledHint={needsNickname ? '设置昵称后才能发布评论' : null}
       floating={layout === 'mobile'}
       inputRef={inputRef}
+      isDisabled={!canPostComment}
       isPosting={isPosting}
       placeholder={placeholder}
       replyTarget={replyTarget}
       onCancelReply={cancelReply}
       onChange={setContent}
+      onDisabledAction={needsNickname ? openNicknameSettings : undefined}
       onSubmit={handlePost}
+    />
+  )
+
+  const guidelinesDialog = (
+    <CommentGuidelinesDialog
+      isOpen={isGuidelinesOpen}
+      onOpenChange={setGuidelinesOpen}
     />
   )
 
@@ -1354,7 +1501,10 @@ function CommentsSection({
           <AnimatedNumber value={total} />
         </span>
       </h2>
-      {sortDropdown}
+      <div className="flex shrink-0 items-center gap-2">
+        <CommentGuidelinesButton onPress={() => setGuidelinesOpen(true)} />
+        {sortDropdown}
+      </div>
     </div>
   )
 
@@ -1472,72 +1622,90 @@ function CommentsSection({
 
   if (layout === 'mobile') {
     return (
-      <section
-        aria-label="评论区"
-        className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
-      >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-md">
-          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-normal text-foreground">
-            <span className="flex size-8 items-center justify-center rounded-xl bg-accent-soft text-accent">
-              <Comments className="size-4" />
-            </span>
-            评论
-            <span className="rounded-full border border-border/60 bg-surface-secondary px-2 py-0.5 text-xs font-medium tabular-nums text-muted">
-              {total}
-            </span>
-          </h2>
-          {sortDropdown}
-        </div>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3">
-          {listSection}
-          {pagination}
-        </div>
-        <div className="pointer-events-none absolute inset-x-4 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10">
-          {commentInput}
-        </div>
-      </section>
+      <>
+        <section
+          aria-label="评论区"
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3 backdrop-blur-md">
+            <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-normal text-foreground">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                <Comments className="size-4" />
+              </span>
+              评论
+              <span className="rounded-full border border-border/60 bg-surface-secondary px-2 py-0.5 text-xs font-medium tabular-nums text-muted">
+                {total}
+              </span>
+            </h2>
+            <div className="flex shrink-0 items-center gap-2">
+              <CommentGuidelinesButton
+                compact
+                onPress={() => setGuidelinesOpen(true)}
+              />
+              {sortDropdown}
+            </div>
+          </div>
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3">
+            {listSection}
+            {pagination}
+          </div>
+          <div className="pointer-events-none absolute inset-x-4 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10">
+            {commentInput}
+          </div>
+        </section>
+        {guidelinesDialog}
+      </>
     )
   }
 
   return (
-    <section
-      aria-label="评论区"
-      className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5"
-    >
-      {headerRow}
-      <div className="flex flex-col gap-4 p-4 sm:p-5">
-        {commentInput}
-        {listSection}
-        {pagination}
-      </div>
-    </section>
+    <>
+      <section
+        aria-label="评论区"
+        className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm shadow-black/5"
+      >
+        {headerRow}
+        <div className="flex flex-col gap-4 p-4 sm:p-5">
+          {commentInput}
+          {listSection}
+          {pagination}
+        </div>
+      </section>
+      {guidelinesDialog}
+    </>
   )
 }
 
 function CommentInput({
   content,
+  disabledHint,
   floating = false,
   inputRef,
+  isDisabled = false,
   isPosting,
   placeholder,
   replyTarget,
   onCancelReply,
   onChange,
+  onDisabledAction,
   onSubmit,
 }: {
   content: string
+  disabledHint?: string | null
   floating?: boolean
   inputRef: React.MutableRefObject<HTMLTextAreaElement | null>
+  isDisabled?: boolean
   isPosting: boolean
   placeholder: string
   replyTarget: ReplyTarget | null
   onCancelReply: () => void
   onChange: (value: string) => void
+  onDisabledAction?: () => void
   onSubmit: () => void
 }) {
   const remaining = COMMENT_MAX_LENGTH - content.length
   const overLimit = remaining < 0
-  const canSubmit = content.trim().length > 0 && !overLimit && !isPosting
+  const canSubmit = !isDisabled && content.trim().length > 0 && !overLimit && !isPosting
   const maxTextareaHeight = floating ? 112 : 176
 
   useEffect(() => {
@@ -1591,6 +1759,7 @@ function CommentInput({
             <TextArea
               aria-label="评论输入框"
               className="max-h-28 min-h-8 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0"
+              disabled={isDisabled}
               maxLength={COMMENT_MAX_LENGTH + 50}
               placeholder={placeholder}
               ref={inputRef}
@@ -1635,6 +1804,21 @@ function CommentInput({
             <PaperPlane className="size-4 -translate-x-px" />
           </Button>
         </div>
+        {disabledHint ? (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-full border border-warning/25 bg-warning-soft/70 px-3 py-1.5 text-xs text-warning-soft-foreground shadow-sm">
+            <span className="min-w-0 truncate">{disabledHint}</span>
+            {onDisabledAction ? (
+              <Button
+                className="h-7 shrink-0 rounded-full px-2"
+                size="sm"
+                variant="ghost"
+                onPress={onDisabledAction}
+              >
+                设置昵称
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -1673,8 +1857,9 @@ function CommentInput({
         <TextArea
           aria-label="评论输入框"
           className={`max-h-36 min-h-18 w-full resize-none border-0 bg-transparent px-4 pb-3 ${
-            replyTarget ? 'pt-1' : 'pt-4'
-          } text-sm leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0 sm:px-5`}
+            replyTarget ? 'pt-0' : 'pt-3'
+          } text-sm leading-6 shadow-none outline-none focus:ring-0 data-[focused=true]:ring-0 data-[focus-visible=true]:ring-0 sm:px-4`}
+          disabled={isDisabled}
           maxLength={COMMENT_MAX_LENGTH + 50}
           placeholder={placeholder}
           ref={inputRef}
@@ -1691,18 +1876,29 @@ function CommentInput({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-surface-secondary/55 px-2 py-2 text-xs sm:pr-2 sm:pl-5 sm:py-2">
-        <span
-          className={`tabular-nums ${
-            overLimit ? 'text-danger' : 'text-muted'
-          }`}
-        >
-          {content.length} / {COMMENT_MAX_LENGTH}
-        </span>
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-surface-secondary/55 px-2 py-2 text-xs sm:pr-2 sm:pl-4 sm:py-1.5">
+        {disabledHint ? (
+          <span className="min-w-0 truncate text-warning-soft-foreground">
+            {disabledHint}
+          </span>
+        ) : (
+          <span
+            className={`tabular-nums ${
+              overLimit ? 'text-danger' : 'text-muted'
+            }`}
+          >
+            {content.length} / {COMMENT_MAX_LENGTH}
+          </span>
+        )}
         <div className="flex items-center gap-2.5 text-muted">
           <span className="hidden sm:inline">
             ⌘/Ctrl + Enter 发送
           </span>
+          {disabledHint && onDisabledAction ? (
+            <Button size="sm" variant="ghost" onPress={onDisabledAction}>
+              设置昵称
+            </Button>
+          ) : null}
           <Button
             isDisabled={!canSubmit}
             isPending={isPosting}
@@ -2079,7 +2275,7 @@ function CommentBody({
                   size="sm"
                   variant="soft"
                 >
-                  <Chip.Label className="text-[11px]">已购买</Chip.Label>
+                  <Chip.Label className="text-[11px]">已兑换</Chip.Label>
                 </Chip>
               ) : null}
             </div>
