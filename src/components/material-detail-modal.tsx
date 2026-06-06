@@ -38,13 +38,7 @@ import {
   TextArea,
 } from '@heroui/react'
 import { AnimatePresence, motion } from 'motion/react'
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   downloadMaterial,
@@ -87,7 +81,7 @@ const COMMENT_GUIDELINES = [
       '请优先分享资料内容、适用课程、版本差异、使用体验和补充说明，让后来者能据此判断是否需要兑换。',
   },
   {
-    title: '尊重师生与同学',
+    title: '尊重他人',
     description:
       '可以讨论观点和事实，不做人身攻击、讽刺辱骂、地域或身份歧视，也不挑衅引战、骚扰他人。',
   },
@@ -116,6 +110,10 @@ const SORT_OPTIONS: { id: MaterialCommentSort; label: string }[] = [
 
 const easing = [0.32, 0.72, 0, 1] as const
 
+function isBlockedMaterial(material: Material): boolean {
+  return Boolean(material.block ?? material.blocked ?? material.is_blocked)
+}
+
 function AnimatedToggle({
   active,
   on,
@@ -141,13 +139,7 @@ function AnimatedToggle({
   )
 }
 
-function AnimatedNumber({
-  value,
-  className,
-}: {
-  value: number
-  className?: string
-}) {
+function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   return (
     <span
       className={`relative inline-flex h-[1em] items-center overflow-hidden align-middle leading-none tabular-nums ${
@@ -291,8 +283,8 @@ function MaterialDetailContent({
   const stage: 'loading' | 'error' | 'ready' = isLoading
     ? 'loading'
     : error || !material
-    ? 'error'
-    : 'ready'
+      ? 'error'
+      : 'ready'
 
   return (
     <AnimatePresence initial={false} mode="wait">
@@ -373,21 +365,19 @@ function MaterialDetailReady({
         className="flex min-h-0 flex-1 flex-col"
       >
         <Modal.Body
-          className={
-            isDesktop
-              ? 'p-0 sm:p-0'
-              : 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
-          }
+          className={isDesktop ? 'p-0 sm:p-0' : 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'}
         >
           {isDesktop ? (
-            <div className={`grid gap-6 px-5 pb-6 pt-5 sm:px-10 sm:pb-9 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-x-8 ${detailSurfaceBg}`}>
+            <div
+              className={`grid gap-6 px-5 pb-6 pt-5 sm:px-10 sm:pb-9 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-x-8 ${detailSurfaceBg}`}
+            >
               <main className="flex min-w-0 flex-col gap-5">
                 <MaterialOverview material={material} />
-              <CommentsSection
-                materialId={materialId}
-                uploaderUserId={material.user_id}
-                layout="desktop"
-              />
+                <CommentsSection
+                  materialId={materialId}
+                  uploaderUserId={material.user_id}
+                  layout="desktop"
+                />
               </main>
               <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2">
                 <ActionZone
@@ -418,10 +408,7 @@ function MaterialDetailReady({
                   </Tabs.Tab>
                 </Tabs.List>
               </Tabs.ListContainer>
-              <Tabs.Panel
-                id="info"
-                className="flex min-h-0 flex-1 flex-col p-0"
-              >
+              <Tabs.Panel id="info" className="flex min-h-0 flex-1 flex-col p-0">
                 <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4 sm:px-8">
                   <MaterialOverview material={material} />
                 </div>
@@ -435,10 +422,7 @@ function MaterialDetailReady({
                   />
                 </div>
               </Tabs.Panel>
-              <Tabs.Panel
-                id="comments"
-                className="flex min-h-0 flex-1 flex-col p-0"
-              >
+              <Tabs.Panel id="comments" className="flex min-h-0 flex-1 flex-col p-0">
                 <CommentsSection
                   materialId={materialId}
                   uploaderUserId={material.user_id}
@@ -484,9 +468,7 @@ function MaterialDetailHeader({ material }: { material: Material }) {
             ) : (
               <Chip color="warning" size="sm" variant="soft">
                 <CircleDollar className="size-3" />
-                <Chip.Label className="tabular-nums">
-                  {material.points} 积分
-                </Chip.Label>
+                <Chip.Label className="tabular-nums">{material.points} 积分</Chip.Label>
               </Chip>
             )}
             {material.is_mine ? (
@@ -503,7 +485,9 @@ function MaterialDetailHeader({ material }: { material: Material }) {
             {material.name || material.file_name || '未命名资料'}
           </Modal.Heading>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5 text-muted">
-            <span className="min-w-0 max-w-full truncate break-all text-foreground/85">{fileMeta}</span>
+            <span className="min-w-0 max-w-full truncate break-all text-foreground/85">
+              {fileMeta}
+            </span>
             <span aria-hidden className="hidden text-muted/50 sm:inline">
               /
             </span>
@@ -528,12 +512,7 @@ function MaterialOverview({ material }: { material: Material }) {
       <div className="border-b border-border/60 bg-linear-to-r from-background to-surface-secondary/70 px-4 py-4 sm:px-5">
         <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold tracking-normal text-foreground">
-              资料信息
-            </h2>
-            <p className="mt-1 text-sm leading-5 text-muted">
-              文件来源、上传记录与补充说明
-            </p>
+            <h2 className="text-base font-semibold tracking-normal text-foreground">资料信息</h2>
           </div>
           <span className="hidden shrink-0 rounded-full border border-border/60 bg-background px-3 py-1 text-xs font-medium text-muted shadow-sm sm:inline-flex">
             {material.purchase_count} 次兑换
@@ -568,19 +547,11 @@ function MaterialOverview({ material }: { material: Material }) {
   )
 }
 
-function InfoRow({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1 bg-background px-4 py-3.5 sm:px-5">
       <dt className="text-xs font-medium text-muted">{label}</dt>
-      <dd className="min-w-0 truncate text-sm font-medium text-foreground">
-        {children}
-      </dd>
+      <dd className="min-w-0 truncate text-sm font-medium text-foreground">{children}</dd>
     </div>
   )
 }
@@ -607,12 +578,15 @@ function ActionZone({
   const [isRating, setRating] = useState<'like' | 'hate' | null>(null)
   const isMine = material.is_mine === true
   const purchased = material.has_purchased === true
+  const isBlocked = isBlockedMaterial(material)
+  const purchaseBlocked = !isMine && !purchased && isBlocked
+  const canPurchase = !isMine && !purchased && !isBlocked
   const canRate = !isMine && purchased
   const userPoints = profile?.points?.points ?? 0
-  const insufficient = !isMine && !purchased && userPoints < material.points
+  const insufficient = canPurchase && userPoints < material.points
 
   const handlePurchase = async () => {
-    if (!token) return
+    if (!token || purchaseBlocked || insufficient) return
     setPurchasing(true)
     try {
       await purchaseMaterial({ id: material.id, token })
@@ -660,8 +634,7 @@ function ActionZone({
     if (!token) return
     const currentlySet =
       rating === 'like' ? material.has_liked === true : material.has_hated === true
-    const otherSet =
-      rating === 'like' ? material.has_hated === true : material.has_liked === true
+    const otherSet = rating === 'like' ? material.has_hated === true : material.has_liked === true
 
     setRating(rating)
     try {
@@ -700,27 +673,41 @@ function ActionZone({
     }
   }
 
-  const heading = isMine ? '上传者' : purchased ? '已兑换' : material.points === 0 ? '免费资料' : '兑换该资料'
+  const heading = isMine
+    ? '上传者'
+    : purchased
+      ? '已兑换'
+      : isBlocked
+        ? '已限制兑换'
+        : material.points === 0
+          ? '免费资料'
+          : '兑换该资料'
   const description = isMine
     ? '您是该资料的上传者，可直接下载。'
     : purchased
-    ? '您已拥有该资料，可直接下载。'
-    : material.points === 0
-    ? '该资料免费分享，兑换后即可下载。'
-    : '兑换后即可下载。如无特殊情况，在兑换后积分无法退还。'
+      ? '您已拥有该资料，可直接下载。'
+      : isBlocked
+        ? '该资料已暂停新的兑换。'
+        : material.points === 0
+          ? '该资料免费分享，兑换后即可下载。'
+          : '兑换后即可下载。如无特殊情况，在兑换后积分无法退还。'
   const ratingUnavailableTitle = isMine ? '自己的上传不可评价' : '兑换后可评价'
   const statusKey = isMine
     ? 'mine'
     : purchased
-    ? 'purchased'
-    : material.points === 0
-    ? 'free'
-    : 'buy'
+      ? 'purchased'
+      : isBlocked
+        ? 'blocked'
+        : material.points === 0
+          ? 'free'
+          : 'buy'
   const actionKey = isMine || purchased ? 'download' : 'purchase'
   const statusIcon = isMine ? (
     <Person className="size-5" />
   ) : purchased ? (
     <ArrowDownToLine className="size-5" />
+  ) : isBlocked ? (
+    <TriangleExclamation className="size-5" />
   ) : material.points === 0 ? (
     <Sparkles className="size-5" />
   ) : (
@@ -728,7 +715,7 @@ function ActionZone({
   )
 
   const pointsInfo =
-    !isMine && !purchased && material.points > 0 ? (
+    canPurchase && material.points > 0 ? (
       <AnimatePresence initial={false}>
         <motion.div
           key="points-info"
@@ -757,6 +744,24 @@ function ActionZone({
         </motion.div>
       </AnimatePresence>
     ) : null
+
+  const blockedWarning = (
+    <AnimatePresence initial={false}>
+      {purchaseBlocked ? (
+        <motion.p
+          key="blocked"
+          initial={{ opacity: 0, height: 0, y: -4 }}
+          animate={{ opacity: 1, height: 'auto', y: 0 }}
+          exit={{ opacity: 0, height: 0, y: -4 }}
+          transition={{ duration: 0.22, ease: easing }}
+          className="-mt-1 flex items-start gap-1.5 overflow-hidden px-1 text-xs leading-relaxed text-danger-soft-foreground"
+        >
+          <TriangleExclamation className="mt-0.5 size-3.5 shrink-0" />
+          该资料由于违规已无法兑换；如果您此前已兑换，仍可下载文件。
+        </motion.p>
+      ) : null}
+    </AnimatePresence>
+  )
 
   const actionButton = (
     <AnimatePresence initial={false} mode="wait">
@@ -788,12 +793,19 @@ function ActionZone({
         >
           <Button
             className="h-11 w-full justify-center text-sm font-semibold shadow-md shadow-accent/15"
-            isDisabled={insufficient}
+            isDisabled={purchaseBlocked || insufficient}
             variant="primary"
-            onPress={() => setPurchaseConfirmOpen(true)}
+            onPress={() => {
+              if (purchaseBlocked || insufficient) return
+              setPurchaseConfirmOpen(true)
+            }}
           >
             <ShoppingCart className="size-4" />
-            {material.points === 0 ? '免费兑换' : `兑换 · ${material.points} 积分`}
+            {purchaseBlocked
+              ? '无法兑换'
+              : material.points === 0
+                ? '免费兑换'
+                : `兑换 · ${material.points} 积分`}
           </Button>
         </motion.div>
       )}
@@ -812,7 +824,8 @@ function ActionZone({
           className="-mt-1 flex items-start gap-1.5 overflow-hidden px-1 text-xs leading-relaxed text-warning-soft-foreground"
         >
           <CircleExclamation className="mt-0.5 size-3.5 shrink-0" />
-          积分不足，还差 {material.points - userPoints} 积分。可通过分享资料、从合作网站兑换等途径获取积分。
+          积分不足，还差 {material.points - userPoints}{' '}
+          积分。可通过分享资料、从合作网站兑换等途径获取积分。
         </motion.p>
       ) : null}
     </AnimatePresence>
@@ -879,10 +892,7 @@ function ActionZone({
         onOpenChange={setReportOpen}
       />
 
-      <AlertDialog.Backdrop
-        isOpen={isPurchaseConfirmOpen}
-        onOpenChange={setPurchaseConfirmOpen}
-      >
+      <AlertDialog.Backdrop isOpen={isPurchaseConfirmOpen} onOpenChange={setPurchaseConfirmOpen}>
         <AlertDialog.Container placement="center">
           <AlertDialog.Dialog className="sm:max-w-105">
             <AlertDialog.Header>
@@ -899,15 +909,14 @@ function ActionZone({
                       userPoints - material.points
                     } 积分）。`}
               </p>
-              <p className="mt-2 text-xs leading-5">
-                兑换后您即可下载并对资料进行评价。
-              </p>
+              <p className="mt-2 text-xs leading-5">兑换后您即可下载并对资料进行评价。</p>
             </AlertDialog.Body>
             <AlertDialog.Footer>
               <Button slot="close" variant="secondary">
                 取消
               </Button>
               <Button
+                isDisabled={purchaseBlocked || insufficient}
                 isPending={isPurchasing}
                 variant="primary"
                 onPress={handlePurchase}
@@ -923,12 +932,10 @@ function ActionZone({
 
   if (floating) {
     return (
-      <section
-        aria-label="兑换与下载"
-        className="mx-auto flex w-full max-w-3xl flex-col gap-2.5"
-      >
+      <section aria-label="兑换与下载" className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
         {pointsInfo}
         {actionButton}
+        {blockedWarning}
         {insufficientWarning}
         <div className="flex w-full items-center justify-between gap-3 pt-0.5">
           {actionRowButtons}
@@ -972,6 +979,7 @@ function ActionZone({
       <Card.Content className="gap-3 bg-background px-5 py-1">
         {pointsInfo}
         {actionButton}
+        {blockedWarning}
         {insufficientWarning}
       </Card.Content>
       <Card.Footer className="justify-between border-t border-border/60 bg-surface-secondary/55 px-3 py-2">
@@ -1100,10 +1108,7 @@ function MaterialReportDialog({
                   </Select.Popover>
                 </Select>
                 <div className="flex flex-col gap-1.5">
-                  <Label
-                    className="text-sm font-medium"
-                    htmlFor="material-report-detail"
-                  >
+                  <Label className="text-sm font-medium" htmlFor="material-report-detail">
                     补充说明（可选）
                   </Label>
                   <TextArea
@@ -1162,9 +1167,7 @@ function CommentGuidelinesButton({
       onPress={onPress}
     >
       <CircleInfo className="size-3.5" />
-      <span className={compact ? 'hidden min-[380px]:inline' : undefined}>
-        发言规范
-      </span>
+      <span className={compact ? 'hidden min-[380px]:inline' : undefined}>发言规范</span>
     </Button>
   )
 }
@@ -1178,12 +1181,7 @@ function CommentGuidelinesDialog({
 }) {
   return (
     <Modal.Backdrop isOpen={isOpen} variant="blur" onOpenChange={onOpenChange}>
-      <Modal.Container
-        className="px-4 py-4 sm:px-6"
-        placement="center"
-        scroll="inside"
-        size="sm"
-      >
+      <Modal.Container className="px-4 py-4 sm:px-6" placement="center" scroll="inside" size="sm">
         <Modal.Dialog className="flex max-h-[min(720px,calc(100dvh-2rem))] flex-col overflow-hidden sm:max-w-lg">
           <Modal.CloseTrigger />
           <Modal.Header>
@@ -1305,16 +1303,13 @@ function CommentsSection({
     })
   }, [comments])
 
-  const registerCommentElement = useCallback(
-    (commentId: number, element: HTMLElement | null) => {
-      if (element) {
-        commentElementsRef.current.set(commentId, element)
-      } else {
-        commentElementsRef.current.delete(commentId)
-      }
-    },
-    [],
-  )
+  const registerCommentElement = useCallback((commentId: number, element: HTMLElement | null) => {
+    if (element) {
+      commentElementsRef.current.set(commentId, element)
+    } else {
+      commentElementsRef.current.delete(commentId)
+    }
+  }, [])
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => inputRef.current?.focus())
@@ -1378,10 +1373,7 @@ function CommentsSection({
 
       if (created.root_id == null) {
         setComments((prev) =>
-          [created, ...prev.filter((c) => c.id !== created.id)].slice(
-            0,
-            COMMENTS_PAGE_SIZE,
-          ),
+          [created, ...prev.filter((c) => c.id !== created.id)].slice(0, COMMENTS_PAGE_SIZE),
         )
         setTotal((t) => t + 1)
       } else {
@@ -1405,14 +1397,9 @@ function CommentsSection({
     [],
   )
 
-  const handleRepliesLoaded = useCallback(
-    (rootId: number, replies: MaterialComment[]) => {
-      setComments((prev) =>
-        prev.map((c) => (c.id === rootId ? { ...c, replies } : c)),
-      )
-    },
-    [],
-  )
+  const handleRepliesLoaded = useCallback((rootId: number, replies: MaterialComment[]) => {
+    setComments((prev) => prev.map((c) => (c.id === rootId ? { ...c, replies } : c)))
+  }, [])
 
   const handleCommentDeleted = useCallback((deleted: MaterialComment) => {
     setComments((prev) => removeDeletedComment(prev, deleted))
@@ -1425,10 +1412,10 @@ function CommentsSection({
   const placeholder = replyTarget
     ? '写下回复…'
     : needsNickname
-    ? '设置昵称后参与评论'
-    : profile
-    ? '分享您对该资料的看法…'
-    : '请先登录后参与评论'
+      ? '设置昵称后参与评论'
+      : profile
+        ? '分享您对该资料的看法…'
+        : '请先登录后参与评论'
 
   const sortDropdown = (
     <Dropdown>
@@ -1446,9 +1433,7 @@ function CommentsSection({
           selectedKeys={new Set([sort])}
           selectionMode="single"
           onSelectionChange={(keys) => {
-            const next = [...(keys as Set<string>)][0] as
-              | MaterialCommentSort
-              | undefined
+            const next = [...(keys as Set<string>)][0] as MaterialCommentSort | undefined
             if (next) {
               setSort(next)
               setPage(1)
@@ -1484,18 +1469,12 @@ function CommentsSection({
   )
 
   const guidelinesDialog = (
-    <CommentGuidelinesDialog
-      isOpen={isGuidelinesOpen}
-      onOpenChange={setGuidelinesOpen}
-    />
+    <CommentGuidelinesDialog isOpen={isGuidelinesOpen} onOpenChange={setGuidelinesOpen} />
   )
 
   const headerRow = (
     <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-linear-to-r from-background to-surface-secondary/70 px-4 py-3 sm:px-5">
       <h2 className="flex items-center gap-2 text-sm font-semibold tracking-normal text-foreground sm:text-base">
-        <span className="flex size-8 items-center justify-center rounded-xl bg-accent-soft text-accent">
-          <Comments className="size-4" />
-        </span>
         评论区
         <span className="inline-flex h-6 items-center justify-center rounded-full border border-border/60 bg-background px-2 text-xs font-medium leading-none text-muted shadow-sm">
           <AnimatedNumber value={total} />
@@ -1511,10 +1490,10 @@ function CommentsSection({
   const listStage: 'error' | 'loading' | 'empty' | 'list' = error
     ? 'error'
     : isLoading
-    ? 'loading'
-    : comments.length === 0
-    ? 'empty'
-    : 'list'
+      ? 'loading'
+      : comments.length === 0
+        ? 'empty'
+        : 'list'
 
   const listSection = (
     <AnimatePresence initial={false} mode="wait">
@@ -1638,10 +1617,7 @@ function CommentsSection({
               </span>
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <CommentGuidelinesButton
-                compact
-                onPress={() => setGuidelinesOpen(true)}
-              />
+              <CommentGuidelinesButton compact onPress={() => setGuidelinesOpen(true)} />
               {sortDropdown}
             </div>
           </div>
@@ -1715,8 +1691,7 @@ function CommentInput({
     textarea.style.height = 'auto'
     const nextHeight = Math.min(textarea.scrollHeight, maxTextareaHeight)
     textarea.style.height = `${nextHeight}px`
-    textarea.style.overflowY =
-      textarea.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden'
+    textarea.style.overflowY = textarea.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden'
   }, [content, floating, inputRef, maxTextareaHeight, replyTarget])
 
   if (floating) {
@@ -1784,7 +1759,9 @@ function CommentInput({
                 exit={{ opacity: 0, scale: 0.7 }}
                 transition={{ duration: 0.18, ease: easing }}
                 className={`shrink-0 self-center rounded-full px-1.5 text-[10px] leading-5 tabular-nums ${
-                  overLimit ? 'bg-danger-soft text-danger-soft-foreground' : 'bg-surface-secondary text-muted'
+                  overLimit
+                    ? 'bg-danger-soft text-danger-soft-foreground'
+                    : 'bg-surface-secondary text-muted'
                 }`}
               >
                 {remaining}
@@ -1878,22 +1855,14 @@ function CommentInput({
 
       <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-surface-secondary/55 px-2 py-2 text-xs sm:pr-2 sm:pl-4 sm:py-1.5">
         {disabledHint ? (
-          <span className="min-w-0 truncate text-warning-soft-foreground">
-            {disabledHint}
-          </span>
+          <span className="min-w-0 truncate text-warning-soft-foreground">{disabledHint}</span>
         ) : (
-          <span
-            className={`tabular-nums ${
-              overLimit ? 'text-danger' : 'text-muted'
-            }`}
-          >
+          <span className={`tabular-nums ${overLimit ? 'text-danger' : 'text-muted'}`}>
             {content.length} / {COMMENT_MAX_LENGTH}
           </span>
         )}
         <div className="flex items-center gap-2.5 text-muted">
-          <span className="hidden sm:inline">
-            ⌘/Ctrl + Enter 发送
-          </span>
+          <span className="hidden sm:inline">⌘/Ctrl + Enter 发送</span>
           {disabledHint && onDisabledAction ? (
             <Button size="sm" variant="ghost" onPress={onDisabledAction}>
               设置昵称
@@ -1964,10 +1933,7 @@ function CommentItem({
       const fetched = data.records ?? []
       if (showAllReplies) {
         const existingIds = new Set(visibleReplies.map((r) => r.id))
-        const merged = [
-          ...visibleReplies,
-          ...fetched.filter((r) => !existingIds.has(r.id)),
-        ]
+        const merged = [...visibleReplies, ...fetched.filter((r) => !existingIds.has(r.id))]
         onRepliesLoaded(comment.id, merged)
       } else {
         onRepliesLoaded(comment.id, fetched)
@@ -2054,13 +2020,7 @@ function CommentItem({
   )
 }
 
-function ExpandableCommentText({
-  children,
-  isDeleted,
-}: {
-  children: string
-  isDeleted: boolean
-}) {
+function ExpandableCommentText({ children, isDeleted }: { children: string; isDeleted: boolean }) {
   const textRef = useRef<HTMLParagraphElement | null>(null)
   const [isExpanded, setExpanded] = useState(false)
   const [canExpand, setCanExpand] = useState(false)
@@ -2141,9 +2101,7 @@ function ExpandableCommentText({
           onPress={() => setExpanded((expanded) => !expanded)}
         >
           <ChevronDown
-            className={`size-3.5 transition-transform ${
-              isExpanded ? 'rotate-180' : ''
-            }`}
+            className={`size-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           />
           {isExpanded ? '收起' : '展开'}
         </Button>
@@ -2187,10 +2145,8 @@ function CommentBody({
 
   const handleRate = async (rating: 'like' | 'hate') => {
     if (!token) return
-    const currentlySet =
-      rating === 'like' ? comment.has_liked === true : comment.has_hated === true
-    const otherSet =
-      rating === 'like' ? comment.has_hated === true : comment.has_liked === true
+    const currentlySet = rating === 'like' ? comment.has_liked === true : comment.has_hated === true
+    const otherSet = rating === 'like' ? comment.has_hated === true : comment.has_liked === true
     setRating(rating)
     try {
       await rateMaterialComment({
@@ -2260,21 +2216,11 @@ function CommentBody({
                 {isDeleted ? '已删除' : comment.author_nickname || '匿名用户'}
               </span>
               {!isDeleted && isUploaderComment ? (
-                <Chip
-                  className="h-5 shrink-0 px-1.5"
-                  color="accent"
-                  size="sm"
-                  variant="soft"
-                >
+                <Chip className="h-5 shrink-0 px-1.5" color="accent" size="sm" variant="soft">
                   <Chip.Label className="text-[11px]">上传者</Chip.Label>
                 </Chip>
               ) : !isDeleted && comment.author_has_purchased ? (
-                <Chip
-                  className="h-5 shrink-0 px-1.5"
-                  color="success"
-                  size="sm"
-                  variant="soft"
-                >
+                <Chip className="h-5 shrink-0 px-1.5" color="success" size="sm" variant="soft">
                   <Chip.Label className="text-[11px]">已兑换</Chip.Label>
                 </Chip>
               ) : null}
@@ -2367,11 +2313,7 @@ function CommentBody({
               <Comments className="size-3.5" />
               <span className="hidden sm:inline">回复</span>
             </Button>
-            <CommentMenu
-              comment={comment}
-              isOwnComment={isOwnComment}
-              onDeleted={onDeleted}
-            />
+            <CommentMenu comment={comment} isOwnComment={isOwnComment} onDeleted={onDeleted} />
           </div>
         ) : null}
       </div>
@@ -2394,13 +2336,7 @@ function CommentMenu({
   return (
     <>
       <Dropdown>
-        <Button
-          isIconOnly
-          aria-label="更多操作"
-          className="size-8"
-          size="sm"
-          variant="ghost"
-        >
+        <Button isIconOnly aria-label="更多操作" className="size-8" size="sm" variant="ghost">
           <EllipsisVertical className="size-3.5" />
         </Button>
         <Dropdown.Popover placement="bottom end">
@@ -2426,11 +2362,7 @@ function CommentMenu({
         </Dropdown.Popover>
       </Dropdown>
       {!isOwnComment ? (
-        <ReportDialog
-          commentId={comment.id}
-          isOpen={isReportOpen}
-          onOpenChange={setReportOpen}
-        />
+        <ReportDialog commentId={comment.id} isOpen={isReportOpen} onOpenChange={setReportOpen} />
       ) : null}
       <DeleteCommentDialog
         comment={comment}
@@ -2496,11 +2428,7 @@ function DeleteCommentDialog({
             <Button slot="close" variant="secondary">
               取消
             </Button>
-            <Button
-              isPending={isDeleting}
-              variant="danger"
-              onPress={handleDelete}
-            >
+            <Button isPending={isDeleting} variant="danger" onPress={handleDelete}>
               <TrashBin className="size-4" />
               删除
             </Button>
@@ -2704,7 +2632,7 @@ function CommentsEmpty() {
         aria-hidden
         className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background text-muted shadow-sm ring-1 ring-border/60"
       >
-        <Comments className="size-[1.125rem]" />
+        <Comments className="size-4.5" />
       </div>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-foreground">暂无评论</p>

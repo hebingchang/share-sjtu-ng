@@ -44,6 +44,8 @@ const SUGGESTED_KEYWORDS = ['大学物理', '概率统计', '高等数学', '线
 const LESSON_SYNC_STATE_KEY = 'lesson_sync_oauth_state'
 const LESSON_SYNC_REDIRECT_KEY = 'lesson_sync_oauth_redirect_uri'
 const LESSON_SYNC_CONSUMED_PREFIX = 'lesson_sync_consumed:'
+const LESSON_SYNC_ACTIVE_TASK_KEY = 'lesson_sync_active_task'
+const LESSON_SYNC_ACTIVE_TASK_MAX_AGE_MS = 24 * 60 * 60 * 1000
 const POLL_INTERVAL_MS = 2500
 const POLL_TIMEOUT_MS = 2 * 60 * 1000
 const SYNC_STATUS_AUTO_HIDE_DELAY_MS = 6000
@@ -129,8 +131,24 @@ const tabItemVariants = {
   },
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException('Aborted', 'AbortError'))
+  }
+
+  return new Promise((resolve, reject) => {
+    function abort() {
+      window.clearTimeout(timer)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener('abort', abort)
+      resolve()
+    }, ms)
+
+    signal?.addEventListener('abort', abort, { once: true })
+  })
 }
 
 function createOauthState(): string {
@@ -151,6 +169,57 @@ function isAbortError(err: unknown): boolean {
 
 function shouldAutoHideSyncStatus(phase: SyncPhase): boolean {
   return phase === 'finished' || phase === 'failed' || phase === 'timeout'
+}
+
+function syncPhaseFromTaskStatus(status: string): SyncPhase {
+  if (status === 'finished') return 'finished'
+  if (status === 'failed') return 'failed'
+  if (status === 'running') return 'running'
+  return 'queued'
+}
+
+function readActiveLessonSyncTaskId(): string | null {
+  const stored = sessionStorage.getItem(LESSON_SYNC_ACTIVE_TASK_KEY)
+  if (!stored) return null
+
+  try {
+    const parsed = JSON.parse(stored) as { createdAt?: unknown; taskId?: unknown }
+    if (typeof parsed.taskId !== 'string' || !parsed.taskId) {
+      sessionStorage.removeItem(LESSON_SYNC_ACTIVE_TASK_KEY)
+      return null
+    }
+
+    if (
+      typeof parsed.createdAt === 'number' &&
+      Date.now() - parsed.createdAt > LESSON_SYNC_ACTIVE_TASK_MAX_AGE_MS
+    ) {
+      sessionStorage.removeItem(LESSON_SYNC_ACTIVE_TASK_KEY)
+      return null
+    }
+
+    return parsed.taskId
+  } catch {
+    sessionStorage.removeItem(LESSON_SYNC_ACTIVE_TASK_KEY)
+    return null
+  }
+}
+
+function storeActiveLessonSyncTaskId(taskId: string): void {
+  sessionStorage.setItem(
+    LESSON_SYNC_ACTIVE_TASK_KEY,
+    JSON.stringify({ createdAt: Date.now(), taskId }),
+  )
+}
+
+function clearActiveLessonSyncTaskId(taskId?: string): void {
+  if (!taskId) {
+    sessionStorage.removeItem(LESSON_SYNC_ACTIVE_TASK_KEY)
+    return
+  }
+
+  if (readActiveLessonSyncTaskId() === taskId) {
+    sessionStorage.removeItem(LESSON_SYNC_ACTIVE_TASK_KEY)
+  }
 }
 
 function termKey(term: UserCourseTerm): string {
@@ -314,24 +383,30 @@ function getSyncStatusView(
 
 async function pollLessonSyncTask({
   onUpdate,
+  signal,
   taskId,
   token,
 }: {
   onUpdate: (task: LessonSyncTaskStatus) => void
+  signal?: AbortSignal
   taskId: string
   token: string
 }): Promise<LessonSyncTaskStatus | 'timeout'> {
   const startedAt = Date.now()
 
-  while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
-    const task = await getLessonSyncTask({ taskId, token })
+  while (!signal?.aborted && Date.now() - startedAt < POLL_TIMEOUT_MS) {
+    const task = await getLessonSyncTask({ signal, taskId, token })
     onUpdate(task)
 
     if (task.status === 'finished' || task.status === 'failed') {
       return task
     }
 
-    await delay(POLL_INTERVAL_MS)
+    await delay(POLL_INTERVAL_MS, signal)
+  }
+
+  if (signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError')
   }
 
   return 'timeout'
@@ -671,6 +746,82 @@ export default function HomePage() {
     }
   }, [coursesReloadKey, selectedTermKey, token])
 
+  const finishLessonSyncPolling = useCallback(
+    (result: LessonSyncTaskStatus | 'timeout', taskId: string) => {
+      if (result === 'timeout') {
+        setSyncPhase('timeout')
+        setSyncMessage(null)
+        void loadTerms().then(() => setCoursesReloadKey((key) => key + 1))
+        return
+      }
+
+      setSyncTask(result)
+      clearActiveLessonSyncTaskId(taskId)
+
+      if (result.status === 'finished') {
+        setSyncPhase('finished')
+        setSyncMessage(null)
+        void loadTerms().then(() => setCoursesReloadKey((key) => key + 1))
+        return
+      }
+
+      setSyncPhase('failed')
+      setSyncMessage(result.message || '课程同步失败，请稍后重试。')
+    },
+    [loadTerms],
+  )
+
+  useEffect(() => {
+    if (!token) return
+
+    const taskId = readActiveLessonSyncTaskId()
+    if (!taskId) return
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      setSyncPhase('queued')
+      setSyncMessage(null)
+
+      getLessonSyncTask({ signal: controller.signal, taskId, token })
+        .then((task) => {
+          if (controller.signal.aborted) return null
+
+          setSyncTask(task)
+          setSyncPhase(syncPhaseFromTaskStatus(task.status))
+
+          if (task.status === 'finished' || task.status === 'failed') {
+            return task
+          }
+
+          return pollLessonSyncTask({
+            onUpdate: (nextTask) => {
+              if (controller.signal.aborted) return
+              setSyncTask(nextTask)
+              setSyncPhase(syncPhaseFromTaskStatus(nextTask.status))
+            },
+            signal: controller.signal,
+            taskId,
+            token,
+          })
+        })
+        .then((result) => {
+          if (!result || controller.signal.aborted) return
+          finishLessonSyncPolling(result, taskId)
+        })
+        .catch((err) => {
+          if (isAbortError(err)) return
+          clearActiveLessonSyncTaskId(taskId)
+          setSyncPhase('failed')
+          setSyncMessage(err instanceof Error ? err.message : '无法恢复课程同步进度')
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [finishLessonSyncPolling, token])
+
   useEffect(() => {
     if (!shouldAutoHideSyncStatus(syncPhase)) return
 
@@ -694,32 +845,19 @@ export default function HomePage() {
 
       startLessonSync({ code, redirectUri, token })
         .then((created) => {
-          setSyncPhase(created.status === 'running' ? 'running' : 'queued')
+          storeActiveLessonSyncTaskId(created.task_id)
+          setSyncPhase(syncPhaseFromTaskStatus(created.status))
           return pollLessonSyncTask({
             onUpdate: (task) => {
               setSyncTask(task)
-              if (task.status === 'running') setSyncPhase('running')
-              if (task.status === 'queued') setSyncPhase('queued')
+              setSyncPhase(syncPhaseFromTaskStatus(task.status))
             },
             taskId: created.task_id,
             token,
-          })
+          }).then((result) => ({ result, taskId: created.task_id }))
         })
-        .then((result) => {
-          if (result === 'timeout') {
-            setSyncPhase('timeout')
-            void loadTerms().then(() => setCoursesReloadKey((key) => key + 1))
-            return
-          }
-
-          setSyncTask(result)
-          if (result.status === 'finished') {
-            setSyncPhase('finished')
-            void loadTerms().then(() => setCoursesReloadKey((key) => key + 1))
-          } else {
-            setSyncPhase('failed')
-            setSyncMessage(result.message || '课程同步失败，请稍后重试。')
-          }
+        .then(({ result, taskId }) => {
+          finishLessonSyncPolling(result, taskId)
         })
         .catch((err) => {
           if (isAbortError(err)) return
@@ -727,7 +865,7 @@ export default function HomePage() {
           setSyncMessage(err instanceof Error ? err.message : '课程同步失败，请稍后重试。')
         })
     },
-    [loadTerms, token],
+    [finishLessonSyncPolling, token],
   )
 
   useEffect(() => {
@@ -801,6 +939,7 @@ export default function HomePage() {
     if (!token) return
 
     const redirectUri = getLessonSyncRedirectUri()
+    clearActiveLessonSyncTaskId()
     setSyncPhase('authorizing')
     setSyncMessage(null)
     setSyncTask(null)

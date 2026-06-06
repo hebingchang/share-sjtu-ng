@@ -5,6 +5,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { searchCourses } from '../api/courses'
 import type { Course } from '../types/course'
+import {
+  getSearchDisplayCourseCodes,
+  getSearchDisplayLatestMaterialUploadedAt,
+  getSearchDisplayMaterialCount,
+} from '../utils/course'
 
 const SEARCH_DEBOUNCE_MS = 220
 const SUGGESTED_KEYWORDS = ['大学物理', '高等数学', '概率统计', '数据结构']
@@ -33,13 +38,9 @@ function getShortcutLabel(): string {
   return 'Ctrl K'
 }
 
-function getCourseCode(course: Course): string | null {
-  if (course.is_deprecated && course.latest_course?.code) return course.latest_course.code
-  return course.code || null
-}
-
 function CourseMonogram({ course }: { course: Course }) {
-  const seed = course.code || course.name || String(course.id)
+  const [primaryCode] = getSearchDisplayCourseCodes(course)
+  const seed = primaryCode || course.name || String(course.id)
   const letters = seed
     .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')
     .slice(0, 2)
@@ -97,11 +98,11 @@ function CommandEmptyState({
 }
 
 function CourseCommandItem({ course }: { course: Course }) {
-  const code = getCourseCode(course)
+  const courseCodes = getSearchDisplayCourseCodes(course)
+  const latestUploadedAt = getSearchDisplayLatestMaterialUploadedAt(course)
+  const materialCount = getSearchDisplayMaterialCount(course)
   const organization = course.organization?.name ?? '暂无开课院系'
-  const latest = course.latest_material_uploaded_at
-    ? formatLatestUpload(course.latest_material_uploaded_at)
-    : '暂无更新'
+  const latest = latestUploadedAt ? formatLatestUpload(latestUploadedAt) : '暂无更新'
 
   return (
     <Command.Item
@@ -110,8 +111,7 @@ function CourseCommandItem({ course }: { course: Course }) {
       textValue={[
         course.name,
         course.english_name,
-        course.code,
-        course.latest_course?.code,
+        ...courseCodes,
         organization,
       ]
         .filter(Boolean)
@@ -119,15 +119,15 @@ function CourseCommandItem({ course }: { course: Course }) {
     >
       <CourseMonogram course={course} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-semibold leading-5 text-foreground">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className="min-w-0 max-w-full truncate text-sm font-semibold leading-5 text-foreground">
             {course.name}
           </span>
-          {code ? (
-            <Chip className="shrink-0" size="sm" variant="soft">
+          {courseCodes.map((code) => (
+            <Chip key={code} className="shrink-0" size="sm" variant="soft">
               <Chip.Label className="tabular-nums">{code}</Chip.Label>
             </Chip>
-          ) : null}
+          ))}
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <span className="min-w-0 truncate">{organization}</span>
@@ -142,7 +142,7 @@ function CourseCommandItem({ course }: { course: Course }) {
         </div>
         <div className="flex items-center gap-2 text-xs text-muted">
           <span>
-            <span className="tabular-nums text-foreground">{course.material_count}</span> 份资料
+            <span className="tabular-nums text-foreground">{materialCount}</span> 份资料
           </span>
           <span aria-hidden className="text-muted/50">
             ·
@@ -289,7 +289,7 @@ export default function CourseCommand({ token }: { token: string }) {
               <Command.Header className="flex items-center justify-between px-4 pb-1 pt-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-accent-soft-hover bg-accent/10 px-2 text-xs font-semibold text-accent">
-                    课程索引
+                    快速搜索
                   </span>
                   <span className="truncate text-xs text-muted">可通过课程名、课号搜索</span>
                 </div>

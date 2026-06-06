@@ -1,5 +1,5 @@
 import { Clock, FileText, ShoppingCart } from '@gravity-ui/icons'
-import { Card } from '@heroui/react'
+import { Alert, Button, Card } from '@heroui/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { getUserPurchaseMaterials } from '../../api/user'
@@ -8,7 +8,6 @@ import type { Material, Purchase } from '../../types/material'
 import { USER_CENTER_PAGE_SIZE } from './constants'
 import {
   EmptyPanel,
-  ErrorPanel,
   LoadingState,
   MotionItem,
   PaginatedListTransition,
@@ -158,11 +157,29 @@ export function PurchasedMaterialsView() {
 
   if (error) {
     return (
-      <ErrorPanel
-        actionLabel="重试"
-        message={error}
-        onAction={() => setReloadKey((key) => key + 1)}
-      />
+      <Alert status="danger">
+        <Alert.Indicator />
+        <Alert.Content>
+          <Alert.Title>兑换资料加载失败</Alert.Title>
+          <Alert.Description>{error}</Alert.Description>
+          <Button
+            className="mt-2 w-fit sm:hidden"
+            size="sm"
+            variant="outline"
+            onPress={() => setReloadKey((key) => key + 1)}
+          >
+            重试
+          </Button>
+        </Alert.Content>
+        <Button
+          className="hidden shrink-0 sm:flex"
+          size="sm"
+          variant="outline"
+          onPress={() => setReloadKey((key) => key + 1)}
+        >
+          重试
+        </Button>
+      </Alert>
     )
   }
 

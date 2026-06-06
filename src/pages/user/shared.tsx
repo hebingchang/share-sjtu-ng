@@ -1,4 +1,4 @@
-import { Button, Pagination, Spinner } from '@heroui/react'
+import { Pagination, Spinner } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, type ComponentType, type ReactNode, type SVGProps } from 'react'
@@ -202,27 +202,6 @@ export function LoadingState({ label }: { label: string }) {
         {label}
       </motion.span>
     </motion.div>
-  )
-}
-
-export function ErrorPanel({
-  actionLabel,
-  message,
-  onAction,
-}: {
-  actionLabel: string
-  message: string
-  onAction: () => void
-}) {
-  return (
-    <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-danger">{message}</p>
-        <Button size="sm" variant="outline" onPress={onAction}>
-          {actionLabel}
-        </Button>
-      </div>
-    </div>
   )
 }
 

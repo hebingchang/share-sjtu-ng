@@ -2,8 +2,8 @@ import { Navigate, Route, Routes } from 'react-router'
 import { useAuth } from '../../auth/use-auth'
 import { BasicInfoView } from './basic'
 import { UserCenterLayout } from './layout'
-import { PointsPlaceholderView } from './placeholder'
 import { PointLogsView } from './point-logs'
+import { PointsRedeemView } from './points-redeem'
 import { PointTransferView } from './point-transfer'
 import { PurchasedMaterialsView } from './purchased-materials'
 import { UploadedMaterialsView } from './uploaded-materials'
@@ -22,7 +22,7 @@ export default function UserPage() {
         <Route path="materials/purchase" element={<PurchasedMaterialsView />} />
         <Route path="point_logs" element={<Navigate replace to="/user/points/logs" />} />
         <Route path="points/logs" element={<PointLogsView />} />
-        <Route path="points/redeem" element={<PointsPlaceholderView kind="redeem" />} />
+        <Route path="points/redeem" element={<PointsRedeemView />} />
         <Route path="points/gift" element={<PointTransferView />} />
         <Route path="*" element={<Navigate replace to="/user/basic" />} />
       </Route>

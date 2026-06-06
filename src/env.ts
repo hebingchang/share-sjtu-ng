@@ -1,3 +1,3 @@
 export const constants = {
-  API_URL: 'https://api.beta.share.dyweb.sjtu.cn',
+  API_URL: 'https://api-v2.share.dyweb.sjtu.cn',
 } as const

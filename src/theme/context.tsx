@@ -7,12 +7,8 @@ import {
 } from 'react'
 import { ThemeContext, type Theme, type ThemeContextValue } from './theme-context'
 
-const THEME_STORAGE_KEY = 'theme'
-
 function readInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light'
-  const stored = localStorage.getItem(THEME_STORAGE_KEY)
-  if (stored === 'light' || stored === 'dark') return stored
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
@@ -24,7 +20,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.remove('light', 'dark')
     root.classList.add(theme)
     root.setAttribute('data-theme', theme)
-    localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
 
   const setTheme = useCallback((next: Theme) => setThemeState(next), [])

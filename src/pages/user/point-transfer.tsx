@@ -50,7 +50,7 @@ import type {
   PointTransferRecord,
   PointTransferStatus,
 } from '../../types/user'
-import { ErrorPanel, LoadingState, MotionItem, MotionStagger, UserPagination } from './shared'
+import { LoadingState, MotionItem, MotionStagger, UserPagination } from './shared'
 import { cx, formatDateTime, isAbortError } from './utils'
 
 const MIN_TRANSFER_AMOUNT = 2
@@ -331,25 +331,25 @@ function MonthlyQuotaPanel({
   monthly: PointTransferMonthlyQuota | null
 }) {
   const reserved = monthly?.reserved_points ?? 0
-  const limit = monthly?.monthly_limit ?? 30
+  const limit = monthly?.monthly_limit ?? 100
   const quotaPercent = limit > 0 ? Math.min(100, Math.max(0, (reserved / limit) * 100)) : 0
 
   return (
     <Card className="min-w-0">
       <Card.Header>
-        <Card.Title>当月额度</Card.Title>
+        <Card.Title>本月接收额度</Card.Title>
         <Card.Description>
           {monthly
             ? `${formatDateTime(monthly.month_start)} 至 ${formatDateTime(monthly.month_end)}`
             : isLoading
-              ? '正在加载额度'
-              : '额度暂不可用'}
+              ? '正在加载接收额度'
+              : '接收额度暂不可用'}
         </Card.Description>
       </Card.Header>
       <Card.Content className="gap-4 my-3">
         <div>
           <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-            <span className="text-muted">已使用额度</span>
+            <span className="text-muted">已占用接收额度</span>
             <span className="font-medium tabular-nums text-foreground">
               {reserved} / {limit}
             </span>
@@ -382,16 +382,16 @@ function TransferPreviewPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricTile label="手续费" tone="warning" value={formatPoints(preview.fee)} />
-        <MetricTile label="对方到账" tone="success" value={formatPoints(preview.receivedAmount)} />
+        <MetricTile label="手续费" tone="default" value={formatPoints(preview.fee)} />
+        <MetricTile label="对方到账" tone="default" value={formatPoints(preview.receivedAmount)} />
         <MetricTile
           label="当前账户扣除"
-          tone="danger"
+          tone="default"
           value={formatPoints(preview.deductedAmount)}
         />
         <MetricTile
           label="发起后余额"
-          tone={isBalanceInsufficient ? 'danger' : 'accent'}
+          tone={isBalanceInsufficient ? 'danger' : 'default'}
           value={balanceAfterTransfer === null ? '待计算' : formatPoints(balanceAfterTransfer)}
         />
       </div>
@@ -400,8 +400,8 @@ function TransferPreviewPanel({
         <Alert status="warning">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>本月额度不足</Alert.Title>
-            <Alert.Description>这笔转账预计到账积分超过当前可用额度。</Alert.Description>
+            <Alert.Title>接收额度不足</Alert.Title>
+            <Alert.Description>这笔转账预计到账积分超过本月剩余接收额度。</Alert.Description>
           </Alert.Content>
         </Alert>
       ) : null}
@@ -877,11 +877,29 @@ export function PointTransferView() {
 
   if (overviewError && !address && !monthly) {
     return (
-      <ErrorPanel
-        actionLabel="重试"
-        message={overviewError}
-        onAction={() => setOverviewReloadKey((key) => key + 1)}
-      />
+      <Alert status="danger">
+        <Alert.Indicator />
+        <Alert.Content>
+          <Alert.Title>积分转账加载失败</Alert.Title>
+          <Alert.Description>{overviewError}</Alert.Description>
+          <Button
+            className="mt-2 w-fit sm:hidden"
+            size="sm"
+            variant="outline"
+            onPress={() => setOverviewReloadKey((key) => key + 1)}
+          >
+            重试
+          </Button>
+        </Alert.Content>
+        <Button
+          className="hidden shrink-0 sm:flex"
+          size="sm"
+          variant="outline"
+          onPress={() => setOverviewReloadKey((key) => key + 1)}
+        >
+          重试
+        </Button>
+      </Alert>
     )
   }
 
@@ -890,11 +908,29 @@ export function PointTransferView() {
       <MotionStagger className="flex flex-col gap-5">
         {overviewError ? (
           <MotionItem>
-            <ErrorPanel
-              actionLabel="重试"
-              message={overviewError}
-              onAction={() => setOverviewReloadKey((key) => key + 1)}
-            />
+            <Alert status="danger">
+              <Alert.Indicator />
+              <Alert.Content>
+                <Alert.Title>积分转账加载失败</Alert.Title>
+                <Alert.Description>{overviewError}</Alert.Description>
+                <Button
+                  className="mt-2 w-fit sm:hidden"
+                  size="sm"
+                  variant="outline"
+                  onPress={() => setOverviewReloadKey((key) => key + 1)}
+                >
+                  重试
+                </Button>
+              </Alert.Content>
+              <Button
+                className="hidden shrink-0 sm:flex"
+                size="sm"
+                variant="outline"
+                onPress={() => setOverviewReloadKey((key) => key + 1)}
+              >
+                重试
+              </Button>
+            </Alert>
           </MotionItem>
         ) : null}
 
@@ -938,7 +974,7 @@ export function PointTransferView() {
             <Tabs.Panel className="pt-4 px-0" id="send">
               <Card className="min-w-0">
                 <Card.Header>
-                  <Card.Description>单笔 2 到 20 积分，发起后等待对方接受。</Card.Description>
+                  <Card.Description>单笔 2 到 20 积分，接收方每月最多到账 20 积分。</Card.Description>
                 </Card.Header>
                 <Card.Content>
                   <form
@@ -995,7 +1031,7 @@ export function PointTransferView() {
                       <p className="text-sm font-medium text-foreground">手续费模式</p>
                       <RadioGroup
                         aria-label="手续费模式"
-                        className="grid !mt-0 !gap-2 sm:grid-cols-2 [&_.radio]:!m-0"
+                        className="grid mt-0! gap-2! sm:grid-cols-2 [&_.radio]:m-0!"
                         value={feeMode}
                         onChange={(value) => {
                           if (isPointTransferFeeMode(value)) setFeeMode(value)
@@ -1080,7 +1116,7 @@ export function PointTransferView() {
                     <div className="flex min-h-32 flex-col items-center justify-center gap-2 text-center">
                       <Clock className="size-5 text-muted" />
                       <p className="text-sm font-medium text-foreground">暂无待处理转账</p>
-                      <p className="text-xs text-muted">收到的待接受转账会显示在这里。</p>
+                      <p className="text-xs text-muted">目前没有待处理的转账请求。</p>
                     </div>
                   )}
                 </Card.Content>
@@ -1092,16 +1128,13 @@ export function PointTransferView() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-muted">
                     共{' '}
-                    <span className="font-medium tabular-nums text-foreground">
-                      {recordsTotal}
-                    </span>{' '}
+                    <span className="font-medium tabular-nums text-foreground">{recordsTotal}</span>{' '}
                     条转账记录
                   </p>
 
                   <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
                     <Select
                       aria-label="按转账方向筛选"
-                      className="w-full sm:w-40"
                       value={directionFilter}
                       variant="secondary"
                       onChange={handleDirectionFilterChange}
@@ -1117,10 +1150,7 @@ export function PointTransferView() {
                         />
                         <Select.Value className="text-sm">
                           {({ defaultChildren }) => (
-                            <span className="flex min-w-0 items-center gap-1 text-sm">
-                              <span className="shrink-0 text-muted">方向：</span>
-                              <span className="min-w-0 truncate">{defaultChildren}</span>
-                            </span>
+                            defaultChildren
                           )}
                         </Select.Value>
                         <Select.Indicator />
@@ -1139,7 +1169,6 @@ export function PointTransferView() {
 
                     <Select
                       aria-label="按转账状态筛选"
-                      className="w-full sm:w-40"
                       value={statusFilter}
                       variant="secondary"
                       onChange={handleStatusFilterChange}
@@ -1154,12 +1183,11 @@ export function PointTransferView() {
                           )}
                         />
                         <Select.Value className="text-sm">
-                          {({ defaultChildren }) => (
-                            <span className="flex min-w-0 items-center gap-1 text-sm">
-                              <span className="shrink-0 text-muted">状态：</span>
-                              <span className="min-w-0 truncate">{defaultChildren}</span>
-                            </span>
-                          )}
+                          <Select.Value className="text-sm">
+                            {({ defaultChildren }) => (
+                              defaultChildren
+                            )}
+                          </Select.Value>
                         </Select.Value>
                         <Select.Indicator />
                       </Select.Trigger>
@@ -1178,11 +1206,29 @@ export function PointTransferView() {
                 </div>
 
                 {recordsError ? (
-                  <ErrorPanel
-                    actionLabel="重试"
-                    message={recordsError}
-                    onAction={() => setRecordsReloadKey((key) => key + 1)}
-                  />
+                  <Alert status="danger">
+                    <Alert.Indicator />
+                    <Alert.Content>
+                      <Alert.Title>转账记录加载失败</Alert.Title>
+                      <Alert.Description>{recordsError}</Alert.Description>
+                      <Button
+                        className="mt-2 w-fit sm:hidden"
+                        size="sm"
+                        variant="outline"
+                        onPress={() => setRecordsReloadKey((key) => key + 1)}
+                      >
+                        重试
+                      </Button>
+                    </Alert.Content>
+                    <Button
+                      className="hidden shrink-0 sm:flex"
+                      size="sm"
+                      variant="outline"
+                      onPress={() => setRecordsReloadKey((key) => key + 1)}
+                    >
+                      重试
+                    </Button>
+                  </Alert>
                 ) : shouldShowRecordsTable ? (
                   <div className="relative">
                     <DataGrid
@@ -1204,11 +1250,11 @@ export function PointTransferView() {
                     ) : null}
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-border/70">
+                  <div className="rounded-2xl border border-dashed border-border/70">
                     <div className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
                       <CircleDollar className="size-5 text-muted" />
                       <p className="text-sm font-medium text-foreground">暂无转账记录</p>
-                      <p className="text-xs text-muted">符合当前筛选条件的记录会显示在这里。</p>
+                      <p className="text-xs text-muted">暂无符合当前筛选条件的记录。</p>
                     </div>
                   </div>
                 )}

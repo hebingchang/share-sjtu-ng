@@ -38,17 +38,13 @@ function PointsSummary({
   points: number
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-accent-soft bg-linear-to-br from-accent-soft/85 via-surface to-surface px-4 py-4 sm:col-span-2 sm:px-5">
+    <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-linear-to-br from-accent-soft/70 via-surface to-surface px-4 py-4 sm:col-span-2 sm:px-5">
       <div
         aria-hidden
         className="pointer-events-none absolute -right-10 -top-12 text-accent/10"
       >
         <CircleDollar className="size-36 sm:size-44" />
       </div>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-4 top-0 h-px bg-linear-to-r from-transparent via-accent/25 to-transparent"
-      />
 
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">

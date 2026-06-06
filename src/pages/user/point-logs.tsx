@@ -1,5 +1,5 @@
 import { ChartLine, Funnel } from '@gravity-ui/icons'
-import { Label, ListBox, Select, Spinner, Tooltip, type Key } from '@heroui/react'
+import { Alert, Button, Label, ListBox, Select, Spinner, Tooltip, type Key } from '@heroui/react'
 import { DataGrid, type DataGridColumn, type DataGridSortDescriptor } from '@heroui-pro/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
@@ -7,7 +7,7 @@ import { getUserPointLogs, type PointLogSortBy, type PointLogSortOrder } from '.
 import { useAuth } from '../../auth/use-auth'
 import type { PointLog, PointLogType } from '../../types/user'
 import { USER_POINT_LOGS_PAGE_SIZE } from './constants'
-import { EmptyPanel, ErrorPanel, UserPagination } from './shared'
+import { EmptyPanel, UserPagination } from './shared'
 import { cx, formatDateTime, getMaterialLink, isAbortError } from './utils'
 
 interface PointLogRow extends PointLog {
@@ -346,11 +346,29 @@ export function PointLogsView() {
 
   if (error) {
     return (
-      <ErrorPanel
-        actionLabel="重试"
-        message={error}
-        onAction={() => setReloadKey((key) => key + 1)}
-      />
+      <Alert status="danger">
+        <Alert.Indicator />
+        <Alert.Content>
+          <Alert.Title>积分日志加载失败</Alert.Title>
+          <Alert.Description>{error}</Alert.Description>
+          <Button
+            className="mt-2 w-fit sm:hidden"
+            size="sm"
+            variant="outline"
+            onPress={() => setReloadKey((key) => key + 1)}
+          >
+            重试
+          </Button>
+        </Alert.Content>
+        <Button
+          className="hidden shrink-0 sm:flex"
+          size="sm"
+          variant="outline"
+          onPress={() => setReloadKey((key) => key + 1)}
+        >
+          重试
+        </Button>
+      </Alert>
     )
   }
 

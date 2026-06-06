@@ -258,7 +258,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
         <Modal.Container placement="center" scroll="inside" size="sm">
           <Modal.Dialog className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-105">
             <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex min-h-0 flex-1 flex-col px-2 pt-4 pb-2 lg:p-6">
+              <div className="flex min-h-0 flex-1 flex-col px-2 pt-4 pb-2 lg:px-6 lg:py-5">
                 <Modal.Header className="items-center p-0 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <Modal.Heading className="flex items-baseline justify-center gap-1 text-2xl font-semibold leading-none">
@@ -270,10 +270,10 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                   </div>
                 </Modal.Header>
 
-                <Modal.Body className="mt-7 -mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-0 pr-2 [scrollbar-width:thin] [&>*]:shrink-0">
+                <Modal.Body className="mt-7 -mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-0 pr-2 [scrollbar-width:thin] *:shrink-0">
                   <Form
                     aria-label="邮箱登录"
-                    className="flex min-w-0 flex-col gap-3"
+                    className="flex min-w-0 flex-col"
                     validationBehavior="aria"
                     onSubmit={(e) => {
                       e.preventDefault()
@@ -296,42 +296,25 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                       </InputGroup>
                     </TextField>
 
-                    <TextField fullWidth className="min-w-0" name="password" type="password">
-                      <Label>密码</Label>
-                      <InputGroup
-                        fullWidth
-                        className="min-w-0 overflow-visible!"
-                        variant="secondary"
-                      >
-                        <InputGroup.Prefix>
-                          <Key className="size-4 text-muted" />
-                        </InputGroup.Prefix>
-                        <InputGroup.Input
-                          className="min-w-0"
-                          placeholder="请输入密码"
-                          type="password"
-                        />
-                      </InputGroup>
-                    </TextField>
-
                     <Button className="mt-4 mb-2" fullWidth type="submit" variant="primary">
-                      登录
+                      获取一次性验证码
                     </Button>
                   </Form>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 mt-2">
                     <Separator className="flex-1" />
                     <span className="shrink-0 text-xs text-muted">快速登录</span>
                     <Separator className="flex-1" />
                   </div>
 
-                  <Button
-                    fullWidth
-                    className="text-foreground"
-                    variant="secondary"
-                    isPending={authorizing === 'jaccount'}
-                    onPress={() => void authorize('jaccount')}
-                  >
+                  <div className='flex flex-col gap-3'>
+                    <Button
+                      fullWidth
+                      className="text-foreground"
+                      variant="secondary"
+                      isPending={authorizing === 'jaccount'}
+                      onPress={() => void authorize('jaccount')}
+                    >
                     <span className="inline-flex items-center justify-center gap-2 leading-none">
                       <span className="inline-flex size-5 shrink-0 items-center justify-center">
                         <img
@@ -344,24 +327,25 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
                       </span>
                       <span className="leading-none text-foreground">使用 jAccount 登录</span>
                     </span>
-                  </Button>
+                    </Button>
 
-                  <Button fullWidth className="text-muted" variant="secondary" isDisabled>
+                    <Button fullWidth className="text-muted" variant="secondary" isDisabled>
                     <span className="inline-flex items-center justify-center gap-2 leading-none text-muted">
                       <span className="inline-flex size-5 shrink-0 items-center justify-center">
                         <Key className="!mx-0 !my-0 !size-4" />
                       </span>
                       <span className="leading-none">使用通行密钥登录</span>
                     </span>
-                  </Button>
+                    </Button>
+                  </div>
                 </Modal.Body>
 
                 <p className="mt-6 shrink-0 text-center text-xs leading-5 text-muted">
-                  {'继续登录代表您同意传承·交大的 '}
+                  继续登录代表您同意传承·交大的
                   <RouterLink className={LEGAL_LINK_CLASS} to="/terms">
                     服务条款
                   </RouterLink>
-                  {' 和 '}
+                  和
                   <RouterLink className={LEGAL_LINK_CLASS} to="/privacy">
                     隐私政策
                   </RouterLink>
@@ -380,7 +364,7 @@ export default function LoginModal({ isOpen }: { isOpen: boolean }) {
               <AlertDialog.Heading>邮箱登录暂不可用</AlertDialog.Heading>
             </AlertDialog.Header>
             <AlertDialog.Body>
-              <p>当前邮箱与密码登录尚未开放，请使用 jAccount 登录。</p>
+              <p>当前邮箱登录尚未开放，请使用 jAccount 登录。</p>
             </AlertDialog.Body>
             <AlertDialog.Footer>
               <Button slot="close" variant="primary">

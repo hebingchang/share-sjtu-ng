@@ -336,7 +336,7 @@ export async function getPointTransferMonthlyQuota({
   return requestUser<PointTransferMonthlyQuota>(
     '/api/v1/user/point-transfer/monthly',
     { signal, token },
-    '获取当月转账额度失败',
+    '获取当月接收额度失败',
   )
 }
 

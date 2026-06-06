@@ -22,6 +22,7 @@ import {
   ListBox,
   Pagination,
   Popover,
+  ScrollShadow,
   SearchField,
   Select,
   Separator,
@@ -39,6 +40,7 @@ import MaterialUploadModal, {
 } from '../components/material-upload-modal'
 import type { Course } from '../types/course'
 import type { Material, MaterialType } from '../types/material'
+import { getSearchDisplayCourseCodes } from '../utils/course'
 
 const UNARCHIVED_KEY = '__unarchived__'
 const VISIBLE_CLASS_LIMIT = 5
@@ -289,9 +291,7 @@ export default function CoursePage() {
     setUploadInitialSelection(undefined)
   }, [])
 
-  const replacementCode = course?.is_deprecated ? course.latest_course?.code : null
-  const primaryCode = replacementCode ?? course?.code
-  const showOldCode = !!replacementCode && course?.code && course.code !== replacementCode
+  const courseCodes = course ? getSearchDisplayCourseCodes(course) : []
   // const taxonomy = useMemo(() => {
   //   if (!course) return [] as string[]
   //   return [...new Set([
@@ -318,8 +318,7 @@ export default function CoursePage() {
           <motion.div key="loaded" {...stateMotion} className="flex flex-col gap-6">
             <CourseHeader
               course={course}
-              primaryCode={primaryCode}
-              showOldCode={!!showOldCode}
+              courseCodes={courseCodes}
               taxonomy={[]}
               onUploadPress={openUploadModal}
             />
@@ -387,15 +386,13 @@ export default function CoursePage() {
 
 function CourseHeader({
   course,
-  primaryCode,
-  showOldCode,
+  courseCodes,
   taxonomy,
   onUploadPress,
 }: {
   course: Course
+  courseCodes: string[]
   onUploadPress: () => void
-  primaryCode?: string
-  showOldCode: boolean
   taxonomy: string[]
 }) {
   return (
@@ -403,16 +400,17 @@ function CourseHeader({
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
-            {primaryCode ? (
-              <Chip className={courseHeaderChipClassName}>
-                <Chip.Label className="tabular-nums">{primaryCode}</Chip.Label>
+            {courseCodes.map((code, index) => (
+              <Chip
+                key={code}
+                className={
+                  index === 0 ? courseHeaderChipClassName : courseHeaderMutedChipClassName
+                }
+                variant={index === 0 ? 'secondary' : 'soft'}
+              >
+                <Chip.Label className="tabular-nums">{code}</Chip.Label>
               </Chip>
-            ) : null}
-            {showOldCode ? (
-              <Chip className={courseHeaderMutedChipClassName} variant="soft">
-                <Chip.Label className="tabular-nums">{course.code}</Chip.Label>
-              </Chip>
-            ) : null}
+            ))}
             {course.level ? (
               <Chip className={courseHeaderMutedChipClassName} variant="soft">
                 <Chip.Label>{formatCourseLevel(course.level)}</Chip.Label>
@@ -638,8 +636,8 @@ function MoreClassesPopover({
           />
         </button>
       </Popover.Trigger>
-      <Popover.Content className="w-[min(320px,calc(100vw-2rem))]">
-        <Popover.Dialog className="flex flex-col gap-3 p-3">
+      <Popover.Content className="w-[min(320px,calc(100vw-2rem))] overflow-hidden">
+        <Popover.Dialog className="flex max-h-[inherit] min-h-0 flex-col gap-3 p-3">
           <SearchField
             aria-label="搜索教学班"
             autoFocus
@@ -658,7 +656,10 @@ function MoreClassesPopover({
             </SearchField.Group>
           </SearchField>
 
-          <div className="-mx-1 max-h-72 overflow-y-auto px-1 [scrollbar-width:thin]">
+          <ScrollShadow
+            className="-mx-1 min-h-0 max-h-72 flex-1 px-1 [scrollbar-width:thin]"
+            size={24}
+          >
             {filtered.length === 0 ? (
               <p className="px-2 py-6 text-center text-xs text-muted">
                 未找到匹配的教学班
@@ -708,7 +709,7 @@ function MoreClassesPopover({
                 })}
               </ul>
             )}
-          </div>
+          </ScrollShadow>
         </Popover.Dialog>
       </Popover.Content>
     </Popover>

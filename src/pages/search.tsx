@@ -6,6 +6,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { searchCourses } from '../api/courses'
 import { useAuth } from '../auth/use-auth'
 import type { Course } from '../types/course'
+import {
+  getSearchDisplayCourseCodes,
+  getSearchDisplayLatestMaterialUploadedAt,
+  getSearchDisplayMaterialCount,
+} from '../utils/course'
 
 function formatLatestUpload(iso: string): string {
   const date = new Date(iso)
@@ -245,56 +250,66 @@ export default function SearchPage() {
             variants={listContainerVariants}
           >
             {courses.map((course) => {
-              const replacementCode = course.is_deprecated ? course.latest_course?.code : null
-              const primaryCode = replacementCode ?? course.code
-              const showOldCode = !!replacementCode && course.code && course.code !== replacementCode
-              const hasChips = Boolean(primaryCode) || Boolean(showOldCode)
+              const courseCodes = getSearchDisplayCourseCodes(course)
+              const latestUploadedAt = getSearchDisplayLatestMaterialUploadedAt(course)
+              const materialCount = getSearchDisplayMaterialCount(course)
+              const courseDescription = [
+                course.organization?.name ?? '暂无开课院系',
+                course.english_name,
+              ]
+                .filter(Boolean)
+                .join(' · ')
 
               return (
-                <motion.div key={course.id} variants={listItemVariants}>
+                <motion.div
+                  key={course.id}
+                  className="min-w-0"
+                  variants={listItemVariants}
+                >
                   <Link
                     aria-label={`查看课程 ${course.name}`}
-                    className="group block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    className="group block min-w-0 max-w-full rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                     to={`/course/${course.id}`}
                   >
                     <Card
-                      className="transition-shadow duration-200 group-hover:shadow-md sm:flex-row sm:items-center sm:gap-5 sm:p-5"
+                      className="min-w-0 max-w-full transition-shadow duration-200 group-hover:shadow-md sm:flex-row sm:items-center sm:gap-5 sm:p-5"
                       role="article"
                     >
                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         <Card.Title className="text-lg font-semibold leading-snug text-foreground sm:text-xl">
                           {highlightKeyword(course.name, queryKeyword)}
                         </Card.Title>
-                        {hasChips ? (
+                        {courseCodes.length > 0 ? (
                           <div className="flex flex-wrap items-center gap-1.5">
-                            {primaryCode ? (
-                              <Chip size="sm">
-                                <Chip.Label className="tabular-nums">{primaryCode}</Chip.Label>
+                            {courseCodes.map((code, index) => (
+                              <Chip
+                                key={code}
+                                size="sm"
+                                variant={index === 0 ? 'secondary' : 'soft'}
+                              >
+                                <Chip.Label className="tabular-nums">{code}</Chip.Label>
                               </Chip>
-                            ) : null}
-                            {showOldCode ? (
-                              <Chip size="sm" variant="soft">
-                                <Chip.Label className="tabular-nums">{course.code}</Chip.Label>
-                              </Chip>
-                            ) : null}
+                            ))}
                           </div>
                         ) : null}
-                        <Card.Description className="truncate">
-                          {course.organization?.name ?? '暂无开课院系'}
-                          {course.english_name ? ` · ${course.english_name}` : ''}
+                        <Card.Description
+                          className="min-w-0 max-w-full truncate"
+                          title={courseDescription}
+                        >
+                          {courseDescription}
                         </Card.Description>
 
                         <div className="mt-1 flex items-center gap-1.5 text-sm text-muted sm:hidden">
                           <span className="text-base font-semibold tabular-nums text-foreground">
-                            {course.material_count}
+                            {materialCount}
                           </span>
                           <span>份资料</span>
-                          {course.latest_material_uploaded_at ? (
+                          {latestUploadedAt ? (
                             <>
                               <span aria-hidden>·</span>
                               <Clock className="size-3.5 shrink-0" />
                               <span>
-                                最新 {formatLatestUpload(course.latest_material_uploaded_at)}
+                                最新 {formatLatestUpload(latestUploadedAt)}
                               </span>
                             </>
                           ) : null}
@@ -306,15 +321,15 @@ export default function SearchPage() {
                         <div className="flex min-w-[7.5rem] flex-col items-end gap-1 text-right">
                           <div className="flex items-baseline gap-1.5">
                             <span className="text-2xl font-semibold leading-none tabular-nums text-foreground">
-                              {course.material_count}
+                              {materialCount}
                             </span>
                             <span className="text-xs text-muted">份资料</span>
                           </div>
-                          {course.latest_material_uploaded_at ? (
+                          {latestUploadedAt ? (
                             <div className="flex items-center gap-1 text-xs text-muted">
                               <Clock className="size-3 shrink-0" />
                               <span>
-                                最新 {formatLatestUpload(course.latest_material_uploaded_at)}
+                                最新 {formatLatestUpload(latestUploadedAt)}
                               </span>
                             </div>
                           ) : (
